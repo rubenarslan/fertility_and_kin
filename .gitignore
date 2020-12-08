@@ -1,0 +1,12 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.rdata
+*.rds
+brms_fits
+Icon
+*.pdf
+*.png
+.passwords.R
+Icon*

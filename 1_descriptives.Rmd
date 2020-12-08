@@ -1,0 +1,22 @@
+---
+title: "1_descriptives"
+author: "Julie"
+date: "14 November 2018"
+output: html_document
+---
+
+# Alttag und Sex - Descriptives {.tabset}
+
+```{r}
+source("0_helpers.R")
+load("cleaned_selected.rdata")
+opts_chunk$set(warning = F, message = F)
+
+library(knitr)
+opts_chunk$set(fig.width = 9, fig.height = 7, cache = T, warning = F, message = F, cache = F, render = formr::pander_handler)
+```
+
+## Whole Sample
+
+
+## Singles 

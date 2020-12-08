@@ -1,0 +1,97 @@
+---
+title: "Robustness analyses"
+author: "Julie Driebe & Ruben Arslan"
+date: "28 February 2019"
+output: html_document
+---
+
+# Robustness analyses {.tabset .tabset-sticky}
+```{r}
+knitr::opts_chunk$set(error = TRUE)
+```
+
+
+```{r echo=F, results='hide',message=F,warning=F, error=F}
+# rmarkdown::render("3_robustness_analyses_new.Rmd", word_document())
+source("0_helpers.R")
+library(knitr) # um diese dokumente zu generieren
+library(formr) # formr paket, kann daten laden
+opts_chunk$set(warning = F, message = F)
+library(lubridate) # mit datum-uhrzeit rechnen
+library(pander) # schoen formatierte tabellen
+library(ggplot2)
+library(brms)
+library(tidyr) # daten von lang nach breit und zurueck
+library(dplyr) # daten zusammenfassen etc. immer als letztes laden
+load("cleaned_selected.rdata")
+diary_social$premenstrual_phase_fab = factor(diary_social$premenstrual_phase_fab)
+diary_social$hormonal_contraception = factor(diary_social$hormonal_contraception)
+diary = diary %>% filter(included_d == T)
+diary_social = diary_social %>% filter(included_s == T)
+diary = diary %>% mutate(
+  social_life_active_numeric = as.numeric(social_life_active),
+  purposefully_met_people = if_else(social_life_active_numeric < 4, 0, 1)
+)
+
+
+diary_social <- diary_social %>% filter(included_s == T  & abode_flat_share !=2)
+diary_social = diary_social %>% filter(relationship_status == 1)
+
+diary_social <- diary_social %>% mutate(created_diary = as.character(created_diary))
+```
+
+```{r mod_fam}
+model <- brm(person_is_related_man ~ premenstrual_phase_fab + menstruation + hormonal_contraception * fertile_fab + (1 + fertile_fab | short) + (1 | short:created_diary ), data = diary_social, family = bernoulli("probit"), cores = 4, file ="brms_fits/relatives_prob")
+
+table(model$data$person_is_related_man)
+model$data %>% group_by(short, created_diary) %>% summarise(person_is_related_man = mean(person_is_related_man)) %>% group_by(short) %>% summarise(person_is_related_man = mean(person_is_related_man)) %>% pull(person_is_related_man) %>% { . > 0 } %>% table()
+# diary_social %>% group_by(short, created_diary) %>% summarise(person_is_related_man = mean(person_is_related_man, na.rm =T)) %>% drop_na() %>% group_by(short) %>% summarise(person_is_related_man = mean(person_is_related_man)) %>% pull(person_is_related_man) %>% { . > 0 } %>% table()
+
+bn <- "mod_relatives"
+do_model_social(model, diary_social)
+```
+
+##### related men inferred
+```{r mod_fam_inferred}
+related_men_inferred <- brms::brm(person_is_related_man_inferred ~ premenstrual_phase_fab + menstruation + hormonal_contraception * fertile_fab + (1 + fertile_fab  | short) + (1 | short:created_diary ), data = diary_social, family = bernoulli("probit"), cores = 4 , file = "brms_fits/related_men_inferred2")
+
+sjPlot::tab_model(related_men_inferred, transform = NULL, show.hdi50 = FALSE, bpe = "mean",prefix.labels	= "varname")
+stanplot(related_men_inferred)
+
+summary(model)
+
+custom_forest(related_men_inferred, pars = "fertile_fab", density = FALSE, sort = TRUE, text = FALSE) +
+    theme(axis.text.y = element_blank()) + 
+    geom_vline(xintercept = 0, linetype = 'dashed', size = 1, color = "black") +
+    scale_color_viridis_d("Contraception", begin = 0.4, end = 0.9, labels = c("TRUE" = "hormonal", "FALSE" = "Non-hormonal"), breaks = c("TRUE", "FALSE"))
+
+
+marginal_effects(related_men_inferred)
+# do_model_social(model_social, diary_social)
+```
+
+
+```{r}
+diary_social %>% group_by(short, created_diary) %>% summarise(person_is_related_man_inferred = mean(person_is_related_man_inferred, na.rm=T)) %>% group_by(short) %>% summarise(person_is_related_man_inferred = mean(person_is_related_man_inferred)) %>% pull(person_is_related_man_inferred) %>% round(2) %>% { . > 0 } %>% table()
+```
+
+
+##### related men inferred (0)
+
+```{r}
+diary_social <- diary_social %>% mutate(person_is_related_man_inferred = if_else(is.na(person_is_related_man_inferred), 0, person_is_related_man_inferred))
+related_men_inferred_zero <- brms::brm(person_is_related_man_inferred ~ premenstrual_phase_fab + menstruation + hormonal_contraception * fertile_fab + (1 + fertile_fab  | short) + (1 | short:created_diary ), data = diary_social, family = bernoulli("probit"), cores = 4 , file = "brms_fits/related_men_inferred_zero")
+
+
+sjPlot::tab_model(related_men_inferred_zero, transform = NULL, show.hdi50 = FALSE, bpe = "mean",prefix.labels	= "varname")
+stanplot(related_men_inferred_zero)
+summary(model)
+
+custom_forest(related_men_inferred_zero, pars = "fertile_fab", density = FALSE, sort = TRUE, text = FALSE) +
+    theme(axis.text.y = element_blank()) + 
+    geom_vline(xintercept = 0, linetype = 'dashed', size = 1, color = "black") +
+    scale_color_viridis_d("Contraception", begin = 0.4, end = 0.9, labels = c("TRUE" = "hormonal", "FALSE" = "Non-hormonal"), breaks = c("TRUE", "FALSE"))
+
+marginal_effects(related_men_inferred_zero)
+```
+

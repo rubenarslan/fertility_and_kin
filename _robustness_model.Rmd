@@ -1,0 +1,142 @@
+---
+title: "_robustness_model"
+author: "Julie"
+date: "21 November 2018"
+output: html_document
+---
+
+#### Model summary {.tabset}
+
+##### Basic model
+```{r echo=F, results='hide',message=F,warning=F, error=F}
+library(effects); library(lme4); library(lmerTest); library(knitr); library(brms)
+
+summary(model)
+stanplot(model, pars = "^b_[^I]")
+marginal_effects(model)
+hypothesis(model, "fertile_fab > 0")
+```
+
+##### Moderation by cycle length
+```{r}
+add_mod_formula = update.formula(
+    update.formula(formula(model), new = . ~ . - hormonal_contraception * fertile_fab), 
+    new = as.formula(. ~ . + menstruation_length_groups * hormonal_contraception * fertile_fab)) # reorder so that the triptych looks nice
+
+with_mod = update(model, formula = add_mod_formula, data = diary, file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
+model
+
+# plot_triptych(with_mod, x.var = "fertile_fab", multiline = F, xlevels = 2)
+
+summary(with_mod)
+
+```
+
+##### Moderation by pregnant trying
+
+
+```{r}
+add_mod_main = update.formula(formula(model), new = as.formula(. ~ . + pregnant_trying * hormonal_contraception)) # reorder so that the triptych looks nice
+
+mod_main = brms::brm(formula = add_mod_main, data = diary, file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
+
+add_mod_formula = update.formula(
+    update.formula(formula(model), new = . ~ . - hormonal_contraception * fertile_fab), 
+    new = as.formula(. ~ . + pregnant_trying * hormonal_contraception * fertile_fab)) # reorder so that the triptych looks nice
+with_mod = brms::brm(formula = add_mod_formula, data = diary, file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
+
+summary(with_mod)
+stanplot(model, pars = "^b_[^I]")
+
+tidy(with_mod) %>% select(term, estimate, conf.low, conf.high)
+```
+
+##### Moderation by weekday
+```{r}
+add_mod_main = update.formula(formula(model), new = as.formula(. ~ . + Wochentag * hormonal_contraception)) # reorder so that the triptych looks nice
+
+mod_main = brms::brm(formula = add_mod_main, data = diary)
+
+add_mod_formula = update.formula(
+    update.formula(formula(model), new = . ~ . - hormonal_contraception * fertile_fab), 
+    new = as.formula(. ~ . + Wochentag * hormonal_contraception * fertile_fab)) # reorder so that the triptych looks nice
+with_mod = brms::brm(formula = add_mod_formula, data = diary, file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
+
+summary(with_mod)
+summary(mod_main)
+
+tidy(with_mod) %>% select(term, estimate, conf.low, conf.high)
+```
+
+
+##### Moderation by age group
+
+
+```{r}
+add_mod_main = update.formula(formula(model), new = as.formula(. ~ . + age_group * hormonal_contraception)) # reorder so that the triptych looks nice
+
+mod_main = brms::brm(formula = add_mod_main, data = diary, file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
+
+add_mod_formula = update.formula(
+    update.formula(formula(model), new = . ~ . - hormonal_contraception * fertile_fab), 
+    new = as.formula(. ~ . + age_group * hormonal_contraception * fertile_fab)) # reorder so that the triptych looks nice
+with_mod = brms::brm(formula = add_mod_formula, data = diary, file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
+
+summary(with_mod)
+
+tidy(with_mod) %>% select(term, estimate, conf.low, conf.high)
+
+```
+
+##### Moderation by psychopharmacological medication
+```{r}
+
+add_mod_formula = update.formula(
+  update.formula(formula(model), new = . ~ . - hormonal_contraception * fertile_fab),
+  new = as.formula( . ~ . + hormonal_contraception * fertile_fab))
+with_mod = brms::brm(formula = add_mod_formula, data= diary %>% filter(medication_psychopharmacological == 0), file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
+
+summary(with_mod)
+
+tidy(with_mod) %>% select(term, estimate, conf.low, conf.high)
+```
+
+##### Moderation by hormonal medication
+```{r}
+add_mod_formula = update.formula(
+    update.formula(formula(model), new = . ~ . - hormonal_contraception * fertile_fab), 
+    new = as.formula(. ~ . +  hormonal_contraception * fertile_fab)) # reorder so that the triptych looks nice
+with_mod = brms::brm(formula = add_mod_formula, data = diary %>% filter(medication_hormonal == 0), file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
+
+summary(with_mod)
+
+tidy(with_mod) %>% select(term, estimate, conf.low, conf.high)
+```
+
+##### Moderation by antibiotics
+
+```{r}
+add_mod_formula = update.formula(
+    update.formula(formula(model), new = . ~ . - hormonal_contraception * fertile_fab), 
+    new = as.formula(. ~ . + hormonal_contraception * fertile_fab)) # reorder so that the triptych looks nice
+with_mod = brms::brm(formula = add_mod_formula, data = diary %>% filter(medication_antibiotics == 0), file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
+
+summary(with_mod)
+
+tidy(with_mod) %>% select(term, estimate, conf.low, conf.high)
+```
+
+##### Moderation by hypothesis guess
+
+
+```{r}
+add_mod_formula = update.formula(
+    update.formula(formula(model), new = . ~ . - hormonal_contraception * fertile_fab), 
+    new = as.formula(. ~ . + hormonal_contraception * fertile_fab)) # reorder so that the triptych looks nice
+with_mod = brms::brm(formula = add_mod_formula, data = diary %>% filter(hypothesis_guess_topic == "no_guess"), file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
+
+summary(with_mod)
+
+tidy(with_mod) %>% select(term, estimate, conf.low, conf.high)
+```
+
