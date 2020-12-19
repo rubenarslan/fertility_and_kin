@@ -47,6 +47,7 @@ fool_packrat = function() {
   library(devtools)
   # needed to actually run rmarkdown in RStudio, but for some reason not in its dependencies
   library(formatR)
+  library(cmdstanr)
 }
 
 #' ## Spin R files
@@ -157,15 +158,10 @@ plot_triptych = function(obj, x.var = 'fertile_fab', multiline=F, partial.residu
 }
 
 
-do_model = function(model, diary) {
-  asis_knit_child("_robustness_model.Rmd")
+do_model = function(model, diary, model_prefix) {
+  rmdpartials::partial("_robustness_model.Rmd", model = model, diary = diary, 
+                       model_prefix = model_prefix)
 }
-
-do_model_social = function(model_social, diary_social) {
-  asis_knit_child("_robustness_model_social.Rmd")
-}
-
-
 
 ##### counting excluded participants
 

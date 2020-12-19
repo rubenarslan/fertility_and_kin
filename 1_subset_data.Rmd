@@ -1,0 +1,33 @@
+
+```{r}
+library(tidyverse)
+library(tidylog)
+load("~/research/gocd2/data/cleaned_selected.rdata")
+
+diary <- diary %>% filter(reasons_for_exclusion == "")
+diary <- diary %>% filter(hetero_relationship == 0)
+diary <- diary %>% filter(relationship_status == 1)
+diary <- diary %>% filter(abode_flat_share != 2)
+
+diary_social <- diary_social %>% mutate(
+  person_is_related_woman = if_else(person_relationship_to_anchor == "biological_relative" & person_sex == 1, 1, 0),  person_is_related_man_seen = if_else(person_is_related_man == 1 & person_seen == 1, 1, 0),
+  person_is_related_man_thoughts = if_else(person_is_related_man == 1 & person_thought_about == 1, 1, 0)
+)
+
+diary_persons <- diary %>% left_join(diary_social %>% select(session, created_date, starts_with("person_is_related"), starts_with("person_is_unrelated")) %>% group_by(session, created_date) %>% summarise_all(~sum(., na.rm = T)))
+
+n_distinct(diary$person)
+mean(diary_persons$person_is_related_man)
+var(diary_persons$person_is_related_man)
+mean(diary_persons$person_is_unrelated_man)
+var(diary_persons$person_is_unrelated_man)
+table(diary_persons$person_is_related_man, exclude = NULL)
+table(diary_persons$person_is_unrelated_man, exclude = NULL)
+
+
+diary_persons$premenstrual_phase_fab = factor(diary_persons$premenstrual_phase_fab)
+diary_persons$hormonal_contraception = factor(diary_persons$hormonal_contraception)
+
+saveRDS(diary_persons, "diary_persons.rds")
+```
+
