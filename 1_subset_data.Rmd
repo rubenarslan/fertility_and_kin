@@ -10,7 +10,9 @@ diary <- diary %>% filter(relationship_status == 1)
 diary <- diary %>% filter(abode_flat_share != 2)
 
 diary_social <- diary_social %>% mutate(
-  person_is_related_woman = if_else(person_relationship_to_anchor == "biological_relative" & person_sex == 1, 1, 0),  person_is_related_man_seen = if_else(person_is_related_man == 1 & person_seen == 1, 1, 0),
+  person_is_related_woman = if_else(person_relationship_to_anchor == "biological_relative" & person_sex == 1, 1, 0),  
+  person_is_unrelated_woman = if_else(person_relationship_to_anchor != "biological_relative" & person_sex == 1, 1, 0),  
+  person_is_related_man_seen = if_else(person_is_related_man == 1 & person_seen == 1, 1, 0),
   person_is_related_man_thoughts = if_else(person_is_related_man == 1 & person_thought_about == 1, 1, 0)
 )
 

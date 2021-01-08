@@ -1,0 +1,26 @@
+```{r}
+library(brms)
+smooths30 <- conditional_effects(model,effects = "RCD_fab:hormonal_contraception", spaghetti = T,resolution = 60, nsamples = 100, dpars = "mu", re_formula = NA)
+
+library(tidyverse)
+smo_data <- attributes(smooths30$`RCD_fab:hormonal_contraception`)$spaghetti %>% mutate(nohc = if_else(hormonal_contraception == TRUE, "0", "1"))
+smo_diff <- full_join(smo_data %>% filter(nohc == "1") %>% mutate(sample__ = str_split_fixed(sample__, "_", n = 2)[,1]),
+              smo_data %>% filter(nohc == "0") %>% mutate(sample__ = str_split_fixed(sample__, "_", n = 2)[,1]), by = c("RCD_fab", "sample__"), suffix = c("_nohc", "_hc")) %>% 
+    mutate(estimate__ = estimate___nohc - estimate___hc,
+           nohc = "diff")
+  smo_data <- bind_rows(smo_data, smo_diff)
+  
+ggplot(smo_data, aes(RCD_fab, estimate__, colour = nohc, fill = nohc, group = sample__)) +
+  geom_vline(xintercept = -14, linetype = 'dashed') +
+  geom_line(stat = 'identity', alpha = 0.08) +
+  scale_color_manual("Contraception", labels = c("0" = "HC user", "1" = "Cycling", "diff" = "Difference"), values = c("0" = 'black', '1' = 'red', "diff" = "#4B7BB4"), breaks = c("0", "1", "diff"), guide = FALSE) +
+  scale_fill_manual("Contraception", labels = c("0" = "HC user", "1" = "Cycling", "diff" = "Difference"), values = c("0" = 'black', '1' = 'red', "diff" = "#4B7BB4"), breaks = c("0", "1", "diff"), guide = FALSE) +
+  facet_wrap( ~ nohc, scales = "free_y", ncol = 3, 
+             labeller = labeller(nohc = c("0" = "HC user", "1" = "Cycling", "diff" = "Difference"))) +
+  scale_x_continuous("Days until next menstrual onset") +
+  scale_y_continuous(outcome) +
+  cowplot::theme_cowplot(font_size = 14, font_family = "Helvetica Neue") +
+  theme(strip.background = element_rect(fill = "#FFFFFF"),
+        strip.text = element_text(size = 11))
+```
+

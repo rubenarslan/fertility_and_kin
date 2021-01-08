@@ -387,10 +387,10 @@
     },
     "data.table": {
       "Package": "data.table",
-      "Version": "1.13.4",
+      "Version": "1.12.8",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "626afb25b020646f53105e6485e695c6"
+      "Hash": "cd711af60c47207a776213a368626369"
     },
     "dbplyr": {
       "Package": "dbplyr",
@@ -510,6 +510,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "1cb4279e697650f0bd78cd3601ee7576"
+    },
+    "foreign": {
+      "Package": "foreign",
+      "Version": "0.8-80",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "ae1b1e15cc6ccb2bc61c0ac33e86d35f"
     },
     "formatR": {
       "Package": "formatR",
@@ -924,10 +931,10 @@
     },
     "nlme": {
       "Package": "nlme",
-      "Version": "3.1-150",
+      "Version": "3.1-149",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "82e52d2c6e674764ffb122d084afa96b"
+      "Hash": "7c24ab3a1e3afe50388eb2d893aab255"
     },
     "nloptr": {
       "Package": "nloptr",
@@ -959,10 +966,10 @@
     },
     "openxlsx": {
       "Package": "openxlsx",
-      "Version": "4.2.3",
+      "Version": "4.1.5",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "2253a430965e222d11a2f9277cd34c2e"
+      "Hash": "9b9b5322c83ee21db73c8ba3787897ca"
     },
     "optimx": {
       "Package": "optimx",
@@ -1194,6 +1201,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "093584b944440c5cd07a696b3c8e0e4c"
+    },
+    "rio": {
+      "Package": "rio",
+      "Version": "0.5.16",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "4a9aecbe83639be364de13ffe0671bcf"
     },
     "rlang": {
       "Package": "rlang",
@@ -1574,10 +1588,10 @@
     },
     "zip": {
       "Package": "zip",
-      "Version": "2.1.1",
+      "Version": "2.0.4",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "3bc8405c637d988801ec5ea88372d0c2"
+      "Hash": "caa73cdca1a87e5f2617915c8809f207"
     },
     "zoo": {
       "Package": "zoo",

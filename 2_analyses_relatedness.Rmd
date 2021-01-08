@@ -24,35 +24,20 @@ library(pander) # schoen formatierte tabellen
 library(ggplot2)
 library(tidyr) # daten von lang nach breit und zurueck
 library(dplyr) # daten zusammenfassen etc. immer als letztes laden
-load("cleaned_selected.rdata")
-diary$premenstrual_phase_fab = factor(diary$premenstrual_phase_fab)
-diary$hormonal_contraception = factor(diary$hormonal_contraception)
-diary_social$premenstrual_phase_fab = factor(diary_social$premenstrual_phase_fab)
-diary_social$hormonal_contraception = factor(diary_social$hormonal_contraception)
-# diary = diary %>% filter(answered_honestly_today == 1)
-# diary_social = diary_social %>% filter(answered_honestly_today == 1)
-
-diary = diary %>% mutate(
-  social_life_active_numeric = as.numeric(social_life_active),
-  purposefully_met_people = if_else(social_life_active_numeric < 4, 0, 1)
-)
-
-
-diary_social <- diary_social %>% filter(included_s == T  & abode_flat_share !=2)
-diary_social <- diary_social %>% mutate(created_diary = as.character(created_diary))
-diary_social = diary_social %>% filter(relationship_status == 1)
-diary_singles <- diary %>% filter(abode_flat_share !=2, relationship_status == 1)
-prop.table(table(diary_singles$dishonest_discard, exclude = NULL))
-diary <- diary %>% filter(included_d == T  & abode_flat_share !=2)
-diary <- diary %>% mutate(created_diary = as.character(created_diary))
-diary = diary %>% filter(relationship_status == 1)
-
+diary <- readRDS("diary_persons.rds")
+curve_plot <- function(model, outcome) {
+  rmdpartials::partial("_model_based_curve.Rmd", model = model, outcome = outcome)
+}
 library(brms)
 ```
 
 ### contact with related men {.tabset}
 ```{r}
-model2_relatives <- brm(person_is_related_man ~ premenstrual_phase_fab + menstruation + hormonal_contraception * fertile_fab + (1 + fertile_fab | short) + (1 | short:created_diary ), data = diary_social %>% filter(included_s == T  & abode_flat_share !=2), family = bernoulli("probit"), cores = 4, file ="brms_fits/relatives_prob")
+model2_relatives <- brm(person_is_related_man ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/relatives_prob")
+
+model2_relatives_curve <- brm(person_is_related_man ~ s(RCD_fab,  by = hormonal_contraception, bs = "cc") + (1 | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/relatives_prob_curve")
+
+curve_plot(model2_relatives_curve, "No. of related men\nseen/thought about")
 
 sjPlot::tab_model(model2_relatives, transform = NULL, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
 summary(model2_relatives)
@@ -76,13 +61,17 @@ custom_forest(model2_relatives, pars = "fertile_fab", density = FALSE, sort = TR
 
 ggsave("ms_fig_varying.pdf", width = 6, height = 7)
 ggsave("ms_fig_varying.png", width = 6, height = 7)
-``` 
+```
 
 ### time family (singles) {.tabset}
 ```{r}
 library(brms)
 library(bayesplot)
-model2_family <- brm(time_family ~ premenstrual_phase_fab + menstruation + hormonal_contraception * fertile_fab + (1 + fertile_fab | short), data = diary, cores = 4, file = "brms_fits/model2_family2")
+model2_family <- brm(time_family ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, cores = 4, backend = "cmdstanr",file = "brms_fits/model2_family3")
+
+model2_family_curve <- brm(time_family ~ s(RCD_fab,  by = hormonal_contraception, bs = "cc") + (1 | person), data = diary, backend = "cmdstanr", cores = 4, file ="brms_fits/model2_family_curve")
+
+curve_plot(model2_family_curve, "Time spent with family")
 
 sjPlot::tab_model(model2_family, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
 summary(model2_family)
@@ -92,11 +81,7 @@ marginal_effects(model2_family)
 
 ### relatives seen {.tabset}
 ```{r}
-nrow(diary_social %>% filter(person_seen == T & included_s == T & abode_flat_share != 2 & person_is_related_man == T))
-
-model2_relatives_seen <- brm(person_is_related_man ~ premenstrual_phase_fab + menstruation + hormonal_contraception * fertile_fab + (1 + fertile_fab | short) + (1 | short:created_diary ), data = diary_social %>% filter(included_s == T  & abode_flat_share !=2) %>% 
-                               mutate(person_is_related_man = if_else(person_seen, person_is_related_man, 0)), family = bernoulli("probit"), cores = 4, file = "brms_fits/related_men_seen")
-
+model2_relatives_seen <- brm(person_is_related_man_seen ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/relatives_seen")
 
 sjPlot::tab_model(model2_relatives_seen,  transform = NULL, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
 summary(model2_relatives_seen)
@@ -106,11 +91,7 @@ marginal_effects(model2_relatives_seen)
 
 ### 2b relatives thought about {.tabset}
 ```{r}
-nrow(diary_social %>% filter(person_thought_about == T & included_s == T & abode_flat_share != 2 & person_is_related_man == T))
-
-
-model2_social_life_related_thought_about <- brm(person_is_related_man ~ premenstrual_phase_fab + menstruation + hormonal_contraception * fertile_fab + (1 + fertile_fab | short) + (1 | short:created_diary ), data = diary_social %>% filter(included_s == T  & abode_flat_share !=2) %>% 
-                               mutate(person_is_related_man = if_else(person_thought_about, person_is_related_man, 0)),  family = bernoulli("probit"), cores = 4, file = "brms_fits/related_thought_about")
+model2_social_life_related_thought_about <- brm(person_is_related_man_thoughts ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/relatives_thoughts")
 
 sjPlot::tab_model(model2_social_life_related_thought_about,  transform = NULL, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
 summary(model2_social_life_related_thought_about)
@@ -120,7 +101,7 @@ marginal_effects(model2_social_life_related_thought_about)
 
 ### unrelated men {.tabset}
 ```{r}
-model2_unrelated_men <- brm(person_is_unrelated_man ~ premenstrual_phase_fab + menstruation + hormonal_contraception * fertile_fab + (1 + fertile_fab | short) + (1 | short:created_diary ), data = diary_social %>% filter(included_s == T  & abode_flat_share !=2),  family = bernoulli("probit"), cores = 4, file ="brms_fits/unrelated_men")
+model2_unrelated_men <- brm(person_is_unrelated_man ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/unrelated_men")
 
 sjPlot::tab_model(model2_unrelated_men,  transform = NULL, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
 summary(model2_unrelated_men)
@@ -130,10 +111,22 @@ marginal_effects(model2_unrelated_men)
 
 ### related women {.tabset}
 ```{r}
-model2_related_women <- brm(person_is_related_woman ~ premenstrual_phase_fab + menstruation + hormonal_contraception * fertile_fab + (1 + fertile_fab | short) + (1 | short:created_diary ), data = diary_social %>% filter(included_s == T  & abode_flat_share !=2) %>% mutate(person_is_related_woman = if_else(person_relationship_to_anchor == "biological_relative" & person_sex == 1, 1, 0)),  family = bernoulli("probit"), cores = 4, file ="brms_fits/related_woman")
+model2_related_women <- brm(person_is_related_woman ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/related_woman")
 
 sjPlot::tab_model(model2_related_women,  transform = NULL, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
 summary(model2_related_women)
 stanplot(model2_related_women, pars = "^b_[^I]")
 marginal_effects(model2_related_women)
+```
+
+
+
+### unrelated women {.tabset}
+```{r}
+model2_unrelated_women <- brm(person_is_unrelated_woman ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/unrelated_woman")
+
+sjPlot::tab_model(model2_unrelated_women,  transform = NULL, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
+summary(model2_unrelated_women)
+stanplot(model2_unrelated_women, pars = "^b_[^I]")
+marginal_effects(model2_unrelated_women)
 ```

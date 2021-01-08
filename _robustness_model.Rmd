@@ -5,16 +5,33 @@ date: "21 November 2018"
 output: html_document
 ---
 
-#### Model summary {.tabset}
+#### Robustness checks {.tabset}
 
 ##### Basic model
 ```{r echo=F, results='hide',message=F,warning=F, error=F}
 library(effects); library(lme4); library(lmerTest); library(knitr); library(brms)
 
 summary(model)
-stanplot(model, pars = "^b_[^I]")
-marginal_effects(model)
+# stanplot(model, pars = "^b_[^I]")
+# marginal_effects(model)
 hypothesis(model, "fertile_fab > 0")
+```
+
+##### Full random slopes
+```{r}
+add_mod_formula = update.formula(
+    formula(model),
+    new = as.formula(. ~ . - (1 + fertile_fab | person) + (1 + premenstrual_phase_fab + menstruation + fertile_fab | person ))) # reorder so that the triptych looks nice
+
+ full_random_slopes = update(model, recompile = TRUE, iter = 6000, warmup = 4000, cores = 4, formula = add_mod_formula, newdata = diary, file= paste0("brms_fits/", model_prefix, "rob_check_full_random_slopes"))
+
+summary(model)
+# stanplot(full_random_slopes)
+
+
+
+# marginal_effects(full_random_slopes)
+# brmstools::spaghetti(full_random_slopes)
 ```
 
 ##### Moderation by cycle length
@@ -23,49 +40,28 @@ add_mod_formula = update.formula(
     update.formula(formula(model), new = . ~ . - hormonal_contraception * fertile_fab), 
     new = as.formula(. ~ . + menstruation_length_groups * hormonal_contraception * fertile_fab)) # reorder so that the triptych looks nice
 
-with_mod = update(model, formula = add_mod_formula, data = diary, file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
-model
-
-# plot_triptych(with_mod, x.var = "fertile_fab", multiline = F, xlevels = 2)
+with_mod = update(model, recompile = TRUE, formula = add_mod_formula, newdata = diary, file= paste0("brms_fits/", model_prefix, "rob_check_mens_length"))
 
 summary(with_mod)
-
 ```
 
-##### Moderation by pregnant trying
+##### Exclude women trying for pregnancy
 
 
 ```{r}
-add_mod_main = update.formula(formula(model), new = as.formula(. ~ . + pregnant_trying * hormonal_contraception)) # reorder so that the triptych looks nice
+pregnant_trying = update(model, recompile = TRUE, cores = 4, newdata = diary %>% filter(pregnant_trying < 4), file=paste0("brms_fits/", model_prefix, "rob_check_pregnant_trying"))
 
-mod_main = brms::brm(formula = add_mod_main, data = diary, file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
-
-add_mod_formula = update.formula(
-    update.formula(formula(model), new = . ~ . - hormonal_contraception * fertile_fab), 
-    new = as.formula(. ~ . + pregnant_trying * hormonal_contraception * fertile_fab)) # reorder so that the triptych looks nice
-with_mod = brms::brm(formula = add_mod_formula, data = diary, file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
-
-summary(with_mod)
-stanplot(model, pars = "^b_[^I]")
-
-tidy(with_mod) %>% select(term, estimate, conf.low, conf.high)
+summary(pregnant_trying)
 ```
 
-##### Moderation by weekday
+##### Moderation by weekend
 ```{r}
-add_mod_main = update.formula(formula(model), new = as.formula(. ~ . + Wochentag * hormonal_contraception)) # reorder so that the triptych looks nice
-
-mod_main = brms::brm(formula = add_mod_main, data = diary)
-
 add_mod_formula = update.formula(
     update.formula(formula(model), new = . ~ . - hormonal_contraception * fertile_fab), 
-    new = as.formula(. ~ . + Wochentag * hormonal_contraception * fertile_fab)) # reorder so that the triptych looks nice
-with_mod = brms::brm(formula = add_mod_formula, data = diary, file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
+    new = as.formula(. ~ . + weekend * hormonal_contraception * fertile_fab)) # reorder so that the triptych looks nice
+weekend = update(model, recompile = TRUE, cores = 4,  newdata = diary, formula = add_mod_formula, file=paste0("brms_fits/", model_prefix, "rob_check_weekend"))
 
-summary(with_mod)
-summary(mod_main)
-
-tidy(with_mod) %>% select(term, estimate, conf.low, conf.high)
+summary(weekend)
 ```
 
 
@@ -73,70 +69,125 @@ tidy(with_mod) %>% select(term, estimate, conf.low, conf.high)
 
 
 ```{r}
-add_mod_main = update.formula(formula(model), new = as.formula(. ~ . + age_group * hormonal_contraception)) # reorder so that the triptych looks nice
-
-mod_main = brms::brm(formula = add_mod_main, data = diary, file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
-
 add_mod_formula = update.formula(
     update.formula(formula(model), new = . ~ . - hormonal_contraception * fertile_fab), 
     new = as.formula(. ~ . + age_group * hormonal_contraception * fertile_fab)) # reorder so that the triptych looks nice
-with_mod = brms::brm(formula = add_mod_formula, data = diary, file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
+rob_check_age = update(model, recompile = TRUE, formula = add_mod_formula, file= paste0("brms_fits/", model_prefix, "rob_check_age"))
 
-summary(with_mod)
-
-tidy(with_mod) %>% select(term, estimate, conf.low, conf.high)
-
+summary(rob_check_age)
 ```
 
-##### Moderation by psychopharmacological medication
+##### Excluding women who used psychopharmacological, hormonal, or antibiotic medication
+
 ```{r}
 
-add_mod_formula = update.formula(
-  update.formula(formula(model), new = . ~ . - hormonal_contraception * fertile_fab),
-  new = as.formula( . ~ . + hormonal_contraception * fertile_fab))
-with_mod = brms::brm(formula = add_mod_formula, data= diary %>% filter(medication_psychopharmacological == 0), file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
+diary <- diary %>% ungroup() %>% 
+  mutate(medication_psychopharmacological = if_else(is.na(medication_psychopharmacological), 0, medication_psychopharmacological),
+         medication_hormonal = if_else(is.na(medication_hormonal), 0, medication_hormonal),
+         medication_antibiotics = if_else(is.na(medication_antibiotics), 0, medication_antibiotics))
 
-summary(with_mod)
+exclude_meds = update(model, recompile = TRUE, cores = 4, newdata= diary %>% filter(medication_psychopharmacological == 0, medication_hormonal == 0, medication_antibiotics == 0), file=paste0("brms_fits/", model_prefix, "rob_check_meds"))
 
-tidy(with_mod) %>% select(term, estimate, conf.low, conf.high)
+summary(exclude_meds)
 ```
 
-##### Moderation by hormonal medication
-```{r}
-add_mod_formula = update.formula(
-    update.formula(formula(model), new = . ~ . - hormonal_contraception * fertile_fab), 
-    new = as.formula(. ~ . +  hormonal_contraception * fertile_fab)) # reorder so that the triptych looks nice
-with_mod = brms::brm(formula = add_mod_formula, data = diary %>% filter(medication_hormonal == 0), file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
 
-summary(with_mod)
-
-tidy(with_mod) %>% select(term, estimate, conf.low, conf.high)
-```
-
-##### Moderation by antibiotics
+##### Excluding hypothesis guessers
 
 ```{r}
-add_mod_formula = update.formula(
-    update.formula(formula(model), new = . ~ . - hormonal_contraception * fertile_fab), 
-    new = as.formula(. ~ . + hormonal_contraception * fertile_fab)) # reorder so that the triptych looks nice
-with_mod = brms::brm(formula = add_mod_formula, data = diary %>% filter(medication_antibiotics == 0), file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
+hyp_guess = update(model, recompile = TRUE, cores = 4,newdata = diary %>% filter(hypothesis_guess_topic == "no_guess"), file=paste0("brms_fits/", model_prefix, "_rob_check_hyp_guess"))
 
-summary(with_mod)
-
-tidy(with_mod) %>% select(term, estimate, conf.low, conf.high)
+summary(hyp_guess)
+# stanplot(hyp_guess)
+# marginal_effects(hyp_guess)
 ```
 
-##### Moderation by hypothesis guess
+
+##### Excluding women with cycles longer than 40 days
+
+```{r}
+avg_cycles = update(model, recompile = TRUE, cores = 4, newdata = diary %>% filter(cycle_length <= 40, cycle_length >= 20), file=paste0("brms_fits/", model_prefix, "_rob_check_avg_cycles"))
+
+summary(avg_cycles)
+```
+
+
+##### Excluding women using awareness-based methods
 
 
 ```{r}
-add_mod_formula = update.formula(
-    update.formula(formula(model), new = . ~ . - hormonal_contraception * fertile_fab), 
-    new = as.formula(. ~ . + hormonal_contraception * fertile_fab)) # reorder so that the triptych looks nice
-with_mod = brms::brm(formula = add_mod_formula, data = diary %>% filter(hypothesis_guess_topic == "no_guess"), file="C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/pregnant_robustness")
+unaware = update(model, recompile = TRUE, cores = 4,newdata = diary %>% filter(contraception_approach != "awareness", contraception_app == 0), file=paste0("brms_fits/", model_prefix, "rob_check_unaware"))
 
-summary(with_mod)
-
-tidy(with_mod) %>% select(term, estimate, conf.low, conf.high)
+summary(unaware)
 ```
 
+
+##### Don't adjust for menstruation
+
+
+```{r}
+dont_adjust = update.formula(formula(model), new = . ~ . - menstruation*hormonal_contraception - premenstrual_phase_fab*hormonal_contraception)
+no_mens = update(model, recompile = TRUE, cores = 4, formula = dont_adjust, file=paste0("brms_fits/", model_prefix, "rob_check_no_mens"))
+
+sjPlot::tab_model(no_mens, transform = NULL, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
+
+summary(no_mens)
+```
+
+
+##### Don't adjust for menstruation interaction (bad pre-reg model)
+
+
+```{r}
+dont_adjust = update.formula(formula(model), new = . ~ . - menstruation:hormonal_contraception - premenstrual_phase_fab:hormonal_contraception)
+no_mens_int = update(model, recompile = TRUE, cores = 4, newdata = diary, formula = dont_adjust, file=paste0("brms_fits/", model_prefix, "rob_check_no_mens_int"))
+
+summary(no_mens_int)
+```
+
+
+##### Using forward counting
+
+
+```{r}
+forward_counted = update(model, recompile = TRUE, cores = 4,newdata = diary %>% mutate(fertile_fab = prc_stirn_b_forward_counted), file=paste0("brms_fits/", model_prefix, "rob_check_forward_counted"))
+
+summary(forward_counted)
+```
+
+
+
+##### Using backward-counting squished 
+
+
+```{r}
+bc_squished = update(model, recompile = TRUE, cores = 4,newdata = diary %>% mutate(fertile_fab = prc_stirn_b_squished), file=paste0("brms_fits/", model_prefix, "rob_check_bc_squished"))
+
+summary(bc_squished)
+```
+
+
+
+##### Using inferred backward-counting 
+```{r}
+bc_inferred = update(model, recompile = TRUE, cores = 4,newdata = diary %>% mutate(fertile_fab = prc_stirn_b_inferred), file=paste0("brms_fits/", model_prefix, "rob_check_bc_inferred"))
+
+summary(bc_inferred)
+```
+
+##### Without random slopes
+
+```{r}
+no_varying_slope = update(model, recompile = TRUE, formula = . ~ . - (1 + fertile_fab | person) + (1|person), cores = 4, file = paste0("brms_fits/", model_prefix, "rob_check_no_varying_slope"))
+
+sjPlot::tab_model(no_varying_slope, transform = NULL, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
+summary(no_varying_slope)
+```
+
+##### Only women with outcome variability
+
+```{r}
+with_outcome_var = update(model, recompile = TRUE, cores = 4, newdata = diary %>% group_by(session) %>% filter(sd(person_is_related_man, na.rm = T) > 0), file = paste0("brms_fits/", model_prefix, "rob_check_with_outcome_var"))
+
+summary(with_outcome_var)
+```

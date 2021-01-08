@@ -396,3 +396,19 @@ send_job_to_cluster <- function(expr,
 model_time <- function(model) {
   rstan::get_elapsed_time(model$fit) %>% rowSums() %>% max() %>% {./60/60}
 }
+
+
+curve_plot <- function(model, outcome) {
+  rmdpartials::partial("_model_based_curve.Rmd", model = model, outcome = outcome)
+}
+
+custom_forest <- function(model, pars) {
+  coefs <- coef(model, probs = c(0.1, 0.9), pars = pars)
+  coefs_df <- as_tibble(coefs$person[,,"fertile_fab"], rownames = "person") %>%     left_join(model$data %>% select(person, hormonal_contraception) %>% mutate(person = as.character(person)))
+  coefs_df %>% arrange(Estimate) %>% 
+    mutate(person = fct_inorder(person)) %>% 
+    ggplot(aes(person, Estimate, ymin = `Q10`, ymax = `Q90`, color = hormonal_contraception)) + 
+    geom_pointrange(size = 0.5, fatten = 0.1) +
+    scale_color_viridis_d("Contraception", begin = 0.4, end = 0.9, labels = c("TRUE" = "Hormonal", "FALSE" = "Non-hormonal"), breaks = c("TRUE", "FALSE")) +
+    coord_flip()
+}
