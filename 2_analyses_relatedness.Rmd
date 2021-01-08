@@ -1,5 +1,5 @@
 ---
-title: "Inbreeding aversion analyses"
+pagetitle: "Inbreeding aversion analyses"
 author: "Julie Driebe & Ruben Arslan"
 date: "28 February 2019"
 output: html_document
@@ -18,22 +18,20 @@ b. All women spend less time with relatives during the FP (this question was ask
 source("0_helpers.R")
 library(knitr) # um diese dokumente zu generieren
 library(formr) # formr paket, kann daten laden
-opts_chunk$set(warning = F, message = F, error = T, fig.width = 10, fig.height = 10)
+opts_chunk$set(warning = F, message = F, error = T, fig.width = 7, fig.height = 6)
 library(lubridate) # mit datum-uhrzeit rechnen
 library(pander) # schoen formatierte tabellen
 library(ggplot2)
 library(tidyr) # daten von lang nach breit und zurueck
 library(dplyr) # daten zusammenfassen etc. immer als letztes laden
 diary <- readRDS("diary_persons.rds")
-curve_plot <- function(model, outcome) {
-  rmdpartials::partial("_model_based_curve.Rmd", model = model, outcome = outcome)
-}
+diary <- diary %>% filter(reasons_for_exclusion == "")
 library(brms)
 ```
 
 ### contact with related men {.tabset}
 ```{r}
-model2_relatives <- brm(person_is_related_man ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/relatives_prob")
+model2_relatives <- brm(person_is_related_man ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/relatives_prob4")
 
 model2_relatives_curve <- brm(person_is_related_man ~ s(RCD_fab,  by = hormonal_contraception, bs = "cc") + (1 | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/relatives_prob_curve")
 
@@ -41,7 +39,6 @@ curve_plot(model2_relatives_curve, "No. of related men\nseen/thought about")
 
 sjPlot::tab_model(model2_relatives, transform = NULL, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
 summary(model2_relatives)
-stanplot(model2_relatives, pars = "^b_[^I]")
 
 table(model2_relatives$data$person_is_related_man)
 
@@ -49,15 +46,17 @@ margins <- marginal_effects(model2_relatives)
 # margins$fertile_fab
 marginal_effects(model2_relatives, conditions = data.frame(fertile_fab = c(0,1)), effects = "fertile_fab")
 
-custom_forest(model2_relatives, pars = "fertile_fab", density = FALSE, sort = TRUE, text = FALSE) +
+
+custom_forest(model2_relatives, pars = "fertile_fab") +
     theme(axis.text.y = element_blank()) + 
-    geom_vline(xintercept = 0, linetype = 'dashed', size = 1, color = "black") +
-    scale_color_viridis_d("Contraception", begin = 0.4, end = 0.9, labels = c("TRUE" = "hormonal", "FALSE" = "Non-hormonal"), breaks = c("TRUE", "FALSE")) +
-  theme_minimal() +
-    theme(axis.text.y = element_blank()) +
+    geom_hline(yintercept = 0, linetype = 'dashed', size = 1, color = "black") +
+    theme(axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          legend.position = c(0,1),
+          legend.justification = c(0,1)) +
     facet_null() +
     ylab("") +
-    scale_x_continuous("Est. fertile phase effect + 95% HDI", breaks = -2:2)
+    scale_y_continuous("Est. fertile phase effect + 80% CI", breaks = -2:2)
 
 ggsave("ms_fig_varying.pdf", width = 6, height = 7)
 ggsave("ms_fig_varying.png", width = 6, height = 7)
@@ -75,8 +74,18 @@ curve_plot(model2_family_curve, "Time spent with family")
 
 sjPlot::tab_model(model2_family, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
 summary(model2_family)
-stanplot(model2_family, pars = "^b_[^I]")
 marginal_effects(model2_family)
+
+custom_forest(model2_family, pars = "fertile_fab") +
+    theme(axis.text.y = element_blank()) + 
+    geom_hline(yintercept = 0, linetype = 'dashed', size = 1, color = "black") +
+    theme(axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          legend.position = c(0,1),
+          legend.justification = c(0,1)) +
+    facet_null() +
+    ylab("") +
+    scale_y_continuous("Est. fertile phase effect + 80% CI", breaks = -2:2)
 ```
 
 ### relatives seen {.tabset}
@@ -85,7 +94,6 @@ model2_relatives_seen <- brm(person_is_related_man_seen ~ (premenstrual_phase_fa
 
 sjPlot::tab_model(model2_relatives_seen,  transform = NULL, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
 summary(model2_relatives_seen)
-stanplot(model2_relatives_seen, pars = "^b_[^I]")
 marginal_effects(model2_relatives_seen)
 ```
 
@@ -95,7 +103,6 @@ model2_social_life_related_thought_about <- brm(person_is_related_man_thoughts ~
 
 sjPlot::tab_model(model2_social_life_related_thought_about,  transform = NULL, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
 summary(model2_social_life_related_thought_about)
-stanplot(model2_social_life_related_thought_about, pars = "^b_[^I]")
 marginal_effects(model2_social_life_related_thought_about)
 ```
 
@@ -105,7 +112,6 @@ model2_unrelated_men <- brm(person_is_unrelated_man ~ (premenstrual_phase_fab + 
 
 sjPlot::tab_model(model2_unrelated_men,  transform = NULL, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
 summary(model2_unrelated_men)
-stanplot(model2_unrelated_men, pars = "^b_[^I]")
 marginal_effects(model2_unrelated_men)
 ```
 
@@ -115,7 +121,6 @@ model2_related_women <- brm(person_is_related_woman ~ (premenstrual_phase_fab + 
 
 sjPlot::tab_model(model2_related_women,  transform = NULL, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
 summary(model2_related_women)
-stanplot(model2_related_women, pars = "^b_[^I]")
 marginal_effects(model2_related_women)
 ```
 
@@ -127,6 +132,5 @@ model2_unrelated_women <- brm(person_is_unrelated_woman ~ (premenstrual_phase_fa
 
 sjPlot::tab_model(model2_unrelated_women,  transform = NULL, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
 summary(model2_unrelated_women)
-stanplot(model2_unrelated_women, pars = "^b_[^I]")
 marginal_effects(model2_unrelated_women)
 ```

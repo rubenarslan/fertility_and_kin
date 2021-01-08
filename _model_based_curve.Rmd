@@ -8,16 +8,38 @@ smo_diff <- full_join(smo_data %>% filter(nohc == "1") %>% mutate(sample__ = str
               smo_data %>% filter(nohc == "0") %>% mutate(sample__ = str_split_fixed(sample__, "_", n = 2)[,1]), by = c("RCD_fab", "sample__"), suffix = c("_nohc", "_hc")) %>% 
     mutate(estimate__ = estimate___nohc - estimate___hc,
            nohc = "diff")
-  smo_data <- bind_rows(smo_data, smo_diff)
+smo_data <- bind_rows(smo_data, smo_diff)
   
-ggplot(smo_data, aes(RCD_fab, estimate__, colour = nohc, fill = nohc, group = sample__)) +
+alphas <- diary %>% 
+  ungroup() %>% 
+  select(RCD_fab, prc_stirn_b_squished) %>% 
+  mutate(RCD_fab = round(RCD_fab)) %>% 
+  distinct()
+  # filter(prc_stirn_b_squished > 0.1)
+
+ymax = max(smo_data$estimate__, na.rm = T)
+ymin = min(smo_data$estimate__, na.rm = T)
+
+rects <- alphas %>% 
+  deframe() %>% 
+  imap(~ annotate('rect', 
+          xmin = as.numeric(.y), xmax = as.numeric(.y) + 1, 
+          ymin = ymin, ymax = ymax, 
+          fill = '#A45B9D', color = NA, alpha = .x))
+```
+
+```{r fig.width=8,fig.height=5}
+ggplot(smo_data, aes(RCD_fab)) +
   geom_vline(xintercept = -14, linetype = 'dashed') +
-  geom_line(stat = 'identity', alpha = 0.08) +
+  geom_rect(aes(xmin = RCD_fab, xmax = RCD_fab + 1,
+                alpha = prc_stirn_b_squished), ymin = -Inf, ymax = Inf, fill = '#A45B9D', color = NA, group = 1, data = alphas) +
+  geom_line(aes(y = estimate__, colour = nohc, group = sample__), stat = 'identity', alpha = 0.08) +
   scale_color_manual("Contraception", labels = c("0" = "HC user", "1" = "Cycling", "diff" = "Difference"), values = c("0" = 'black', '1' = 'red', "diff" = "#4B7BB4"), breaks = c("0", "1", "diff"), guide = FALSE) +
+  scale_alpha(guide = F, range = c(0,0.58)) +
   scale_fill_manual("Contraception", labels = c("0" = "HC user", "1" = "Cycling", "diff" = "Difference"), values = c("0" = 'black', '1' = 'red', "diff" = "#4B7BB4"), breaks = c("0", "1", "diff"), guide = FALSE) +
   facet_wrap( ~ nohc, scales = "free_y", ncol = 3, 
              labeller = labeller(nohc = c("0" = "HC user", "1" = "Cycling", "diff" = "Difference"))) +
-  scale_x_continuous("Days until next menstrual onset") +
+  scale_x_continuous("Days until next menstrual onset\n(squished to 29-day cycle)", breaks = c(-29, -21, -14, -6,-5,-4,-3,-2, -1), labels = c("29", "22", "14\nest. ovulation", "6\n", "\n", "\n", "\n\npremens.", "\n", "1\n")) +
   scale_y_continuous(outcome) +
   cowplot::theme_cowplot(font_size = 14, font_family = "Helvetica Neue") +
   theme(strip.background = element_rect(fill = "#FFFFFF"),

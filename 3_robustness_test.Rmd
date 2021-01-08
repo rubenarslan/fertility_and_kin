@@ -44,7 +44,7 @@ diary_social = diary_social %>% mutate(
 
 ## time family
 ```{r mod_time_fam}
-model <- brm(time_family ~ premenstrual_phase_fab + menstruation_labelled +  hormonal_contraception * fertile_fab + (1 | short ), data = diary, cores = 4, file = "C:/Users/driebe1/Dropbox/Julie/single_preferences/brms_fits/model2_family_robustness")
+model <- brm(time_family ~ premenstrual_phase_fab + menstruation_labelled +  hormonal_contraception * fertile_fab + (1 | short ), data = diary, cores = 4, file = "brms_fits/model2_family_robustness")
 
 do_model(model, diary)
 ```

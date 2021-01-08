@@ -4,9 +4,10 @@ library(tidyverse)
 library(tidylog)
 load("~/research/gocd2/data/cleaned_selected.rdata")
 
-diary <- diary %>% filter(reasons_for_exclusion == "")
+# only singles
 diary <- diary %>% filter(hetero_relationship == 0)
 diary <- diary %>% filter(relationship_status == 1)
+# no women who live with their parents
 diary <- diary %>% filter(abode_flat_share != 2)
 
 diary_social <- diary_social %>% mutate(
