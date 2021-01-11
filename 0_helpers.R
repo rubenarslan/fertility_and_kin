@@ -412,3 +412,7 @@ custom_forest <- function(model, pars) {
     scale_color_viridis_d("Contraception", begin = 0.4, end = 0.9, labels = c("TRUE" = "Hormonal", "FALSE" = "Non-hormonal"), breaks = c("TRUE", "FALSE")) +
     coord_flip()
 }
+
+summary.brmsfit <- function(...) {
+  brms:::summary.brmsfit(..., prob = 0.99)
+}

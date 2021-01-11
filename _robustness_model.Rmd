@@ -5,20 +5,18 @@ date: "21 November 2018"
 output: html_document
 ---
 
-#### Robustness checks {.tabset}
+### Robustness checks {.tabset}
 
-##### Basic model
+#### Basic model
 
 ```{r echo=F, results='hide',message=F,warning=F, error=F}
 library(effects); library(lme4); library(lmerTest); library(knitr); library(brms)
 
 summary(model)
-# stanplot(model, pars = "^b_[^I]")
-# marginal_effects(model)
-hypothesis(model, "fertile_fab > 0")
+outcome <- model$formula[[1]][[2]]
 ```
 
-##### Full random slopes
+#### Full random slopes
 
 ```{r}
 add_mod_formula = update.formula(
@@ -28,10 +26,50 @@ add_mod_formula = update.formula(
  full_random_slopes = update(model, recompile = TRUE, iter = 6000, warmup = 4000, cores = 4, formula = add_mod_formula, newdata = diary %>% filter(reasons_for_exclusion == ""), file= paste0("brms_fits/", model_prefix, "rob_check_full_random_slopes"))
 
 summary(full_random_slopes)
-# brmstools::spaghetti(full_random_slopes)
 ```
 
-##### Exclude cycles shorter than 25 days
+#### Without random slopes
+
+```{r}
+no_varying_slope = update(model, recompile = TRUE, formula = . ~ . - (1 + fertile_fab | person) + (1|person), cores = 4, file = paste0("brms_fits/", model_prefix, "rob_check_no_varying_slope"))
+
+summary(no_varying_slope)
+```
+
+#### Only women with outcome variability
+
+```{r}
+with_outcome_var = update(model, recompile = TRUE, cores = 4, newdata = diary %>% filter(reasons_for_exclusion == "") %>% group_by(session) %>% filter(sd(!!outcome, na.rm = T) > 0), file = paste0("brms_fits/", model_prefix, "rob_check_with_outcome_var"))
+
+summary(with_outcome_var)
+```
+
+#### Ordinal model
+
+```{r}
+if(identical(model$family$family, "gaussian")) {
+  ordinal_model = update(model, recompile = TRUE, family = cumulative(), newdata = diary %>% mutate(time_family = as.integer(time_family)) %>% filter(reasons_for_exclusion == ""), file= paste0("brms_fits/", model_prefix, "rob_check_full_ordinal_model"))
+  summary(ordinal_model)
+} 
+```
+
+#### Gaussian model
+```{r}
+if(identical(model$family$family, "poisson")) {
+  gaussian_model = update(model, recompile = TRUE, family = gaussian(), file= paste0("brms_fits/", model_prefix, "rob_check_full_ordinal_model"))
+  summary(gaussian_model)
+}
+```
+
+#### No exclusions
+
+```{r}
+no_exclusions = update(model, recompile = TRUE, cores = 4, newdata = diary, file=paste0("brms_fits/", model_prefix, "rob_check_no_exclusions"))
+
+summary(no_exclusions)
+```
+
+#### Exclude cycles shorter than 25 days
 
 ```{r}
 rob_check_mens_length = update(model, recompile = TRUE, cores = 4, newdata = diary %>% filter(reasons_for_exclusion == "") %>% filter(cycle_length >= 25), file=paste0("brms_fits/", model_prefix, "rob_check_mens_length"))
@@ -39,7 +77,7 @@ rob_check_mens_length = update(model, recompile = TRUE, cores = 4, newdata = dia
 summary(rob_check_mens_length)
 ```
 
-##### Exclude women who report cycles outside 25-35
+#### Exclude women who report cycles outside 25-35
 
 ```{r}
 rob_check_selfrepcycle_length = update(model, recompile = TRUE, cores = 4, newdata = diary %>% filter(reasons_for_exclusion == "") %>% filter(menstruation_length >= 25, menstruation_length <= 35), file=paste0("brms_fits/", model_prefix, "rob_check_selfrepcycle_length"))
@@ -48,7 +86,7 @@ summary(rob_check_selfrepcycle_length)
 ```
 
 
-##### Exclude women who report cycles varying more than 1-2 days
+#### Exclude women who report cycles varying more than 1-2 days
 
 ```{r}
 rob_check_menstruation_regularity = update(model, recompile = TRUE, cores = 4, newdata = diary %>% filter(reasons_for_exclusion == "") %>% filter(menstruation_regularity <= 2), file=paste0("brms_fits/", model_prefix, "rob_check_menstruation_regularity"))
@@ -57,7 +95,7 @@ summary(rob_check_menstruation_regularity)
 ```
 
 
-##### Exclude women who report uncertainty larger than ±2 days
+#### Exclude women who report uncertainty larger than ±2 days
 Across three items (last menstrual onset, cycle length, menstruation regularity).
 
 ```{r}
@@ -67,7 +105,7 @@ rob_check_menstruation_certainty = update(model, recompile = TRUE, cores = 4, ne
 summary(rob_check_menstruation_certainty)
 ```
 
-##### Exclude women who report not feeling healthy
+#### Exclude women who report not feeling healthy
 
 ```{r}
 rob_check_health = update(model, recompile = TRUE, cores = 4, newdata = diary %>% filter(reasons_for_exclusion == "") %>% filter(self_rated_health <= 2), file=paste0("brms_fits/", model_prefix, "rob_check_health"))
@@ -75,7 +113,7 @@ rob_check_health = update(model, recompile = TRUE, cores = 4, newdata = diary %>
 summary(rob_check_health)
 ```
 
-##### Exclude women trying for pregnancy
+#### Exclude women trying for pregnancy
 
 ```{r}
 pregnant_trying = update(model, recompile = TRUE, cores = 4, newdata = diary %>% filter(reasons_for_exclusion == "") %>% filter(pregnant_trying < 4), file=paste0("brms_fits/", model_prefix, "rob_check_pregnant_trying"))
@@ -83,15 +121,25 @@ pregnant_trying = update(model, recompile = TRUE, cores = 4, newdata = diary %>%
 summary(pregnant_trying)
 ```
 
-##### No exclusions
 
+#### Include women living with parents
 ```{r}
-no_exclusions = update(model, recompile = TRUE, cores = 4, newdata = diary, file=paste0("brms_fits/", model_prefix, "rob_check_no_exclusions"))
+rob_check_parents = update(model, recompile = TRUE, cores = 4, newdata = diary %>% filter(reasons_for_exclusion == "" | reasons_for_exclusion == "living_with_parents, "), file=paste0("brms_fits/", model_prefix, "rob_check_parents"))
 
-summary(no_exclusions)
+summary(rob_check_parents)
 ```
 
-##### Moderation by weekend
+#### Include non-singles
+
+```{r}
+if(outcome != "person_is_related_man") {
+  rob_check_nonsingles = update(model, recompile = TRUE, cores = 4, newdata = diary %>% filter(reasons_for_exclusion == "" | reasons_for_exclusion == "not_single, "), file=paste0("brms_fits/", model_prefix, "rob_check_nonsingles"))
+
+summary(rob_check_nonsingles)
+}
+```
+
+#### Moderation by weekend
 
 ```{r}
 weekend = update(model, recompile = TRUE, cores = 4, newdata = diary %>% filter(reasons_for_exclusion == "") %>% filter(weekend == 1), file=paste0("brms_fits/", model_prefix, "rob_check_weekend"))
@@ -101,7 +149,7 @@ summary(weekend)
 summary(weekday)
 ```
 
-##### Moderation by age group
+#### Moderation by age group
 
 ```{r}
 older25 = update(model, recompile = TRUE, cores = 4, newdata = diary %>% filter(reasons_for_exclusion == "") %>% filter(age > 25), file=paste0("brms_fits/", model_prefix, "rob_check_older25"))
@@ -111,7 +159,7 @@ summary(younger25)
 summary(older25)
 ```
 
-##### Excluding women who used psychopharmacological, hormonal, or antibiotic medication
+#### Excluding women who used psychopharmacological, hormonal, or antibiotic medication
 
 ```{r}
 diary <- diary %>% filter(reasons_for_exclusion == "") %>% ungroup() %>% 
@@ -124,7 +172,7 @@ exclude_meds = update(model, recompile = TRUE, cores = 4, newdata= diary %>% fil
 summary(exclude_meds)
 ```
 
-##### Excluding hypothesis guessers
+#### Excluding hypothesis guessers
 
 ```{r}
 hyp_guess = update(model, recompile = TRUE, cores = 4,newdata = diary %>% filter(reasons_for_exclusion == "") %>% filter(hypothesis_guess_topic == "no_guess"), file=paste0("brms_fits/", model_prefix, "_rob_check_hyp_guess"))
@@ -134,7 +182,7 @@ summary(hyp_guess)
 # marginal_effects(hyp_guess)
 ```
 
-##### Excluding women using awareness-based methods
+#### Excluding women using awareness-based methods
 
 ```{r}
 unaware = update(model, recompile = TRUE, cores = 4,newdata = diary %>% filter(reasons_for_exclusion == "") %>% filter(contraception_approach != "awareness", contraception_app == 0), file=paste0("brms_fits/", model_prefix, "rob_check_unaware"))
@@ -142,7 +190,7 @@ unaware = update(model, recompile = TRUE, cores = 4,newdata = diary %>% filter(r
 summary(unaware)
 ```
 
-##### Don't adjust for menstruation
+#### Don't adjust for menstruation
 
 ```{r}
 dont_adjust = update.formula(formula(model), new = . ~ . - menstruation*hormonal_contraception - premenstrual_phase_fab*hormonal_contraception)
@@ -152,7 +200,7 @@ no_mens = update(model, recompile = TRUE, cores = 4, formula = dont_adjust, file
 summary(no_mens)
 ```
 
-##### Don't adjust for menstruation interaction (bad pre-reg model)
+#### Don't adjust for menstruation interaction (bad pre-reg model)
 We originally preregistered a model, in which we did not fit an interaction
 between hormonal contraception and (pre-)menstruation. However, if we want to adjust the effect of the probability of being in the fertile window for (pre-)menstruation, we need to include "interaction controls". This robustness check shows that this decision makes little difference to the results.
 
@@ -163,7 +211,7 @@ no_mens_int = update(model, recompile = TRUE, cores = 4, newdata = diary %>% fil
 summary(no_mens_int)
 ```
 
-##### Using forward counting
+#### Using forward counting
 
 ```{r}
 forward_counted = update(model, 
@@ -176,7 +224,7 @@ forward_counted = update(model,
 summary(forward_counted)
 ```
 
-##### Using forward counted narrow window
+#### Using forward counted narrow window
 
 ```{r}
 forward_counted_window = update(model, 
@@ -191,7 +239,7 @@ summary(forward_counted_window)
 ```
 
 
-##### Using backward counted narrow window
+#### Using backward counted narrow window
 
 ```{r}
 backward_counted_window = update(model, 
@@ -205,7 +253,7 @@ backward_counted_window = update(model,
 summary(backward_counted_window)
 ```
 
-##### Using backward-counting squished
+#### Using backward-counting squished
 
 ```{r}
 bc_squished = update(model, recompile = TRUE, cores = 4,newdata = diary %>% filter(reasons_for_exclusion == "") %>% mutate(fertile_fab = prc_stirn_b_squished, premenstrual_phase_fab = premenstrual_phase_squished), file=paste0("brms_fits/", model_prefix, "rob_check_bc_squished"))
@@ -213,7 +261,7 @@ bc_squished = update(model, recompile = TRUE, cores = 4,newdata = diary %>% filt
 summary(bc_squished)
 ```
 
-##### Using inferred backward-counting
+#### Using inferred backward-counting
 
 ```{r}
 bc_inferred = update(model, recompile = TRUE, cores = 4,newdata = diary  %>% filter(reasons_for_exclusion == "fertility_never_estimable, next_menstrual_onset_unobserved, " | reasons_for_exclusion == "next_menstrual_onset_unobserved, " | reasons_for_exclusion == "")  %>% mutate(fertile_fab = prc_stirn_b_inferred, premenstrual_phase_fab = premenstrual_phase_inferred), file=paste0("brms_fits/", model_prefix, "rob_check_bc_inferred"))
@@ -221,28 +269,21 @@ bc_inferred = update(model, recompile = TRUE, cores = 4,newdata = diary  %>% fil
 summary(bc_inferred)
 ```
 
-##### Without random slopes
 
-```{r}
-no_varying_slope = update(model, recompile = TRUE, formula = . ~ . - (1 + fertile_fab | person) + (1|person), cores = 4, file = paste0("brms_fits/", model_prefix, "rob_check_no_varying_slope"))
 
-summary(no_varying_slope)
+#### Related men inferred
+```{r mod_fam_inferred}
+related_men_inferred <- update(model, recompile = TRUE, formula = person_is_related_man_inferred ~ ., file = paste0("brms_fits/", model_prefix, "related_men_inferred"))
+
+summary(related_men_inferred)
 ```
 
-##### Only women with outcome variability
 
-```{r}
-outcome <- model$formula[[1]][[2]]
-with_outcome_var = update(model, recompile = TRUE, cores = 4, newdata = diary %>% filter(reasons_for_exclusion == "") %>% group_by(session) %>% filter(sd(!!outcome, na.rm = T) > 0), file = paste0("brms_fits/", model_prefix, "rob_check_with_outcome_var"))
-
-summary(with_outcome_var)
-```
-
-##### Summary plot {.active}
+#### Summary plot {.active}
 
 ```{r}
 library(broom.mixed)
-list(
+robchecks_e <- list(
   `A1. Original model` = model,
   `E1. No exclusions` = no_exclusions,
   `E2. No hypothesis guessing` = hyp_guess,
@@ -257,29 +298,38 @@ list(
   `E8a. Women 18-25` = younger25,
   `E8b. Women older than 25` = older25,
   `E9a. Friday-Saturday only` = weekend,
-  `E9b. Monday-Thursday only` = weekday
-  ) %>%
+  `E9b. Monday-Thursday only` = weekday,
+  `E10. Include living with parents` = rob_check_parents
+  )
+if(outcome != "person_is_related_man") {
+  robchecks_e[["E11. Include non-singles"]] = rob_check_nonsingles 
+}
+robchecks_e <- robchecks_e %>%
   map(function(x) {
           b <- broom::tidy(x, conf.level = 0.99)
           b$n_days = nrow(x$data)
           b$n_persons = max(n_distinct(x$data$person),
                             n_distinct(x$data$short))
+          b$category = "exclusions"
           b
           }) %>% 
-  bind_rows(.id = "check") %>% 
+  bind_rows(.id = "check")
+
+robchecks_e %>% 
   filter(term == "fertile_fab") %>% 
-  mutate(check = fct_rev(paste0('atop("",atop("', check,'",',
-                                'phantom(0)^"(',n_persons, ' women, ',n_days,' days)"))'))) %>% 
+  mutate(check = fct_rev(fct_inorder(paste0('atop("",atop("', check,'",',
+                                'phantom(0)^"(',n_persons, ' women, ',n_days,' days)"))')))) %>% 
   ggplot(aes(check, estimate, ymin = conf.low, ymax = conf.high)) + 
   geom_hline(yintercept = 0, linetype = 'dashed') +
   scale_x_discrete("Robustness check", labels = function(x) {parse(text=x)}) +
   ylab("Fertile window effect with 99% CI") +
   geom_pointrange() + 
   coord_flip() +
-  theme(axis.text.y = element_text(size = 10))
-ggsave(paste0(model_prefix,"_robustness_checks_exclusions.png"), width =10, height = 14)
+  theme(axis.text.y = element_text(size = 11))
+ggsave(paste0("figures/", model_prefix,"_robustness_checks_exclusions.png"), width =10, height = 14)
+ggsave(paste0("figures/", model_prefix,"_robustness_checks_exclusions.pdf"), width =10, height = 14)
 
-list(
+robchecks_p <- list(
   `A1. Original model` = model,
   `P1. Not adj. for (pre-)mens.` = no_mens,
   `P2. No HC×(pre-)mens. interaction` = no_mens_int,
@@ -291,15 +341,26 @@ list(
   `M1. Full random slopes` = full_random_slopes,
   `M2. No random slopes` = no_varying_slope,
   `M3. Require outcome variance` = with_outcome_var
-  ) %>%
+  )
+
+if(model$family$family == "gaussian") {
+  robchecks_p[["M5. Ordinal regression"]] = ordinal_model 
+} else {
+  robchecks_p[["M4. Gaussian regression"]] = gaussian_model 
+}
+
+robchecks_p <- robchecks_p %>%
   map(function(x) {
           b <- broom::tidy(x, conf.level = 0.99)
           b$n_days = nrow(x$data)
           b$n_persons = max(n_distinct(x$data$person),
                             n_distinct(x$data$short))
+          b$category = "model"
           b
           }) %>% 
-  bind_rows(.id = "check") %>% 
+  bind_rows(.id = "check")
+
+robchecks_p %>% 
   filter(term == "fertile_fab") %>% 
   mutate(check = fct_rev(paste0('atop("",atop("', check,'",',
                                 'phantom(0)^"(',n_persons, ' women, ',n_days,' days)"))'))) %>% 
@@ -309,17 +370,25 @@ list(
   ylab("Fertile window effect with 99% CI") +
   geom_pointrange() + 
   coord_flip() +
-  theme(axis.text.y = element_text(size = 10))
-ggsave(paste0(model_prefix,"_robustness_checks_model.png"), width =10, height = 14)
+  theme(axis.text.y = element_text(size = 11))
+ggsave(paste0("figures/", model_prefix,"_robustness_checks_model.png"), width =10, height = 14)
+ggsave(paste0("figures/", model_prefix,"_robustness_checks_model.pdf"), width =10, height = 14)
 
-# 
-# list(
-#   `Age moderation` = rob_check_age, 
-#   `Weekend moderation` = weekend) %>% 
-#   map(~ broom::tidy(.)) %>% 
-#   bind_rows(.id = "check") %>% 
-#   filter(str_detect(term,"fertile_fab")) %>% 
-#   ggplot(aes(paste(model, term), estimate, ymin = conf.low, ymax = conf.high)) + 
-#   geom_pointrange() + 
-#   coord_flip()
+
+
+bind_rows(robchecks_e, robchecks_p) %>% 
+  filter(term == "fertile_fab") %>% 
+  mutate(check = fct_rev(fct_inorder(paste0('atop("",atop("', check,'",',
+                                'phantom(0)^"(',n_persons, ' women, ',n_days,' days)"))')))) %>% 
+  ggplot(aes(check, estimate, ymin = conf.low, ymax = conf.high)) + 
+  geom_hline(yintercept = 0, linetype = 'dashed') +
+  scale_x_discrete("Robustness check", labels = function(x) {parse(text=x)}) +
+  ylab("Fertile window effect with 99% CI") +
+  geom_pointrange() + 
+  coord_flip() +
+  facet_wrap(~ category, scales = "free_y") + 
+  theme(axis.text.y = element_text(size = 11),
+        strip.text = element_blank())
+ggsave(paste0("figures/", model_prefix,"_robustness_checks.png"), width =14, height = 14)
+ggsave(paste0("figures/", model_prefix,"_robustness_checks.pdf"), width =14, height = 14)
 ```

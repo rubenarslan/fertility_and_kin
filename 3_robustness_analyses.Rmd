@@ -10,10 +10,6 @@ output: html_document
 knitr::opts_chunk$set(error = TRUE)
 ```
 
-
-
-
-## load packages {.tabset}
 ```{r echo=F, results='hide',message=F,warning=F}
 source("0_helpers.R")
 library(knitr) # um diese dokumente zu generieren
@@ -31,8 +27,7 @@ options(brms.backend = "cmdstanr",
         mc.cores = 4)
 ```
 
-
-### time family (singles) {.tabset}
+## time spent with family {.tabset}
 ```{r}
 model2_family <- brm(time_family ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary %>% filter(reasons_for_exclusion == ""), cores = 4, file = "brms_fits/model2_family4")
 
@@ -40,7 +35,7 @@ bn <- "mod_family"
 do_model(model2_family, diary, model_prefix = bn)
 ```
 
-### related men
+## related men
 ```{r mod_fam}
 model2_relatives <- brm(person_is_related_man ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary %>% filter(reasons_for_exclusion == ""), family = poisson(), cores = 4, file ="brms_fits/relatives_prob4")
 
@@ -48,16 +43,3 @@ bn <- "mod_relatives"
 do_model(model2_relatives, diary, model_prefix = bn)
 ```
 
-
-##### related men inferred
-```{r mod_fam_inferred}
-related_men_inferred <- brm(person_is_related_man_inferred ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary %>% filter(reasons_for_exclusion == ""), family = poisson(), cores = 4, file ="brms_fits/related_men_inferred")
-
-summary(related_men_inferred)
-
-custom_forest(related_men_inferred, pars = "fertile_fab", density = FALSE, sort = TRUE, text = FALSE) +
-    theme(axis.text.y = element_blank()) + 
-    geom_vline(xintercept = 0, linetype = 'dashed', size = 1, color = "black") +
-    scale_color_viridis_d("Contraception", begin = 0.4, end = 0.9, labels = c("TRUE" = "hormonal", "FALSE" = "Non-hormonal"), breaks = c("TRUE", "FALSE"))
-
-```
