@@ -1,48 +1,108 @@
 ```{r}
 library(brms)
-smooths30 <- conditional_effects(model,effects = "RCD_fab:hormonal_contraception", spaghetti = T,resolution = 60, nsamples = 100, dpars = "mu", re_formula = NA)
+outcome_var <- model$formula[[1]][[2]]
+
+smooths30 <- conditional_effects(model, 
+      effects = "RCD_fab:hormonal_contraception",
+      spaghetti = TRUE, resolution = 60, 
+      nsamples = 100, dpars = "mu", 
+      re_formula = NA)
 
 library(tidyverse)
-smo_data <- attributes(smooths30$`RCD_fab:hormonal_contraception`)$spaghetti %>% mutate(nohc = if_else(hormonal_contraception == TRUE, "0", "1"))
-smo_diff <- full_join(smo_data %>% filter(nohc == "1") %>% mutate(sample__ = str_split_fixed(sample__, "_", n = 2)[,1]),
-              smo_data %>% filter(nohc == "0") %>% mutate(sample__ = str_split_fixed(sample__, "_", n = 2)[,1]), by = c("RCD_fab", "sample__"), suffix = c("_nohc", "_hc")) %>% 
+
+smo_data <- attributes(smooths30$`RCD_fab:hormonal_contraception`)$spaghetti %>% 
+  mutate(nohc = if_else(hormonal_contraception == TRUE, "0", "1"))
+s
+smo_diff <- full_join(
+  smo_data %>% 
+    filter(nohc == "1") %>%
+    mutate(sample__ = str_split_fixed(sample__, "_", n = 2)[,1]),
+  smo_data %>% 
+    filter(nohc == "0") %>% 
+    mutate(sample__ = str_split_fixed(sample__, "_", n = 2)[,1]),
+  by = c("RCD_fab", "sample__"), 
+  suffix = c("_nohc", "_hc")
+  ) %>% 
     mutate(estimate__ = estimate___nohc - estimate___hc,
            nohc = "diff")
+
 smo_data <- bind_rows(smo_data, smo_diff)
+
+y_axes <- bind_rows(
+  model$data %>% 
+    mutate(nohc = if_else(hormonal_contraception == TRUE, "0", "1")) %>% 
+    group_by(nohc) %>% 
+    summarise(
+      outcomemeanplus1sd = mean(!!outcome_var, na.rm = T) + sd(!!outcome_var, na.rm = T),
+      outcomemeanminus1sd = mean(!!outcome_var, na.rm = T) - sd(!!outcome_var, na.rm = T)),
+  model$data %>% 
+    summarise(
+      outcomemeanplus1sd = 0 + sd(!!outcome_var, na.rm = T),
+      outcomemeanminus1sd = 0 - sd(!!outcome_var, na.rm = T)) %>% 
+    mutate(nohc = "diff")
+)
+
+smo_data <- smo_data %>% left_join(y_axes)
   
 alphas <- diary %>% 
   ungroup() %>% 
   select(RCD_fab, prc_stirn_b_squished) %>% 
   mutate(RCD_fab = round(RCD_fab)) %>% 
   distinct()
-  # filter(prc_stirn_b_squished > 0.1)
-
-ymax = max(smo_data$estimate__, na.rm = T)
-ymin = min(smo_data$estimate__, na.rm = T)
-
-rects <- alphas %>% 
-  deframe() %>% 
-  imap(~ annotate('rect', 
-          xmin = as.numeric(.y), xmax = as.numeric(.y) + 1, 
-          ymin = ymin, ymax = ymax, 
-          fill = '#A45B9D', color = NA, alpha = .x))
 ```
 
 ```{r fig.width=8,fig.height=5}
 ggplot(smo_data, aes(RCD_fab)) +
-  geom_vline(xintercept = -14, linetype = 'dashed') +
+  # grow the Y axes to show mean±1SD
+  geom_blank(aes(ymin = outcomemeanminus1sd, 
+                 ymax = outcomemeanplus1sd)) +
+  # show fertile window probabilities as BG color
   geom_rect(aes(xmin = RCD_fab, xmax = RCD_fab + 1,
-                alpha = prc_stirn_b_squished), ymin = -Inf, ymax = Inf, fill = '#A45B9D', color = NA, group = 1, data = alphas) +
+                alpha = prc_stirn_b_squished), 
+            ymin = -Inf, ymax = Inf, 
+            fill = '#A45B9D', color = NA, 
+            group = 1, data = alphas) +
+  # vertical line at the est. day of ovulation
+  geom_vline(xintercept = -14, linetype = 'dashed') +
+  
+  # draw samples from spline
   geom_line(aes(y = estimate__, colour = nohc, group = sample__), stat = 'identity', alpha = 0.08) +
-  scale_color_manual("Contraception", labels = c("0" = "HC user", "1" = "Cycling", "diff" = "Difference"), values = c("0" = 'black', '1' = 'red', "diff" = "#4B7BB4"), breaks = c("0", "1", "diff"), guide = FALSE) +
+  
+  # color lines
+  scale_color_manual("Contraception", 
+                     labels = c("0" = "HC user", "1" = "Cycling", "diff" = "Difference"), 
+                     values = c("0" = 'black', '1' = 'red', "diff" = "#4B7BB4"), 
+                     breaks = c("0", "1", "diff"), 
+                     guide = FALSE) +
+  
+  # make the alpha range fit the prc_stirn_b values
   scale_alpha(guide = F, range = c(0,0.58)) +
-  scale_fill_manual("Contraception", labels = c("0" = "HC user", "1" = "Cycling", "diff" = "Difference"), values = c("0" = 'black', '1' = 'red', "diff" = "#4B7BB4"), breaks = c("0", "1", "diff"), guide = FALSE) +
+  
+  # irrelevant when showing individual spline estimates
+  # scale_fill_manual("Contraception", 
+  #                   labels = c("0" = "HC user", "1" = "Cycling", "diff" = "Difference"), 
+  #                   values = c("0" = 'black', '1' = 'red', "diff" = "#4B7BB4"), 
+  #                   breaks = c("0", "1", "diff"), guide = FALSE) +
+  
+  # facet the plot by contraception 
   facet_wrap( ~ nohc, scales = "free_y", ncol = 3, 
              labeller = labeller(nohc = c("0" = "HC user", "1" = "Cycling", "diff" = "Difference"))) +
-  scale_x_continuous("Days until next menstrual onset\n(squished to 29-day cycle)", breaks = c(-29, -21, -14, -6,-5,-4,-3,-2, -1), labels = c("29", "22", "14\nest. ovulation", "6\n", "\n", "\n", "\n\npremens.", "\n", "1\n")) +
+  
+  # fancy labelling for X axis
+  scale_x_continuous("Days until next menstrual onset\n(squished to 29-day cycle)", 
+                     breaks = c(-29, -21, -14, -6,-5,-4,-3,-2, -1), 
+                     labels = c("29", "22", "14\nest. ovulation", "6\n", "\n", "\n", "\n\npremens.", "\n", "1\n")) +
+  
+  # This variable comes from the function
   scale_y_continuous(outcome) +
-  cowplot::theme_cowplot(font_size = 14, font_family = "Helvetica Neue") +
+  
+  cowplot::theme_cowplot(font_size = 14, 
+                         font_family = "Helvetica Neue") +
+  
   theme(strip.background = element_rect(fill = "#FFFFFF"),
         strip.text = element_text(size = 11))
+
+ggsave(paste0("figures/",outcome, "_curve.png"), width = 7, height = 4)
+ggsave(paste0("figures/",outcome, "_curve.pdf"), width = 7, height = 4)
 ```
 
