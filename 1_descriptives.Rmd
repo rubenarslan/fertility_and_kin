@@ -9,14 +9,119 @@ output: html_document
 
 ```{r}
 source("0_helpers.R")
-load("cleaned_selected.rdata")
+diary <- readRDS("diary_persons.rds")
 opts_chunk$set(warning = F, message = F)
 
 library(knitr)
-opts_chunk$set(fig.width = 9, fig.height = 7, cache = T, warning = F, message = F, cache = F, render = formr::pander_handler)
+opts_chunk$set(fig.width = 9, fig.height = 7, cache = T, warning = F, message = F, cache = F)
 ```
+
+## Exclusion reasons
+
+### Between subjects
+```{r}
+all_surveys <- diary %>% group_by(person) %>% filter(row_number()==1) %>% ungroup()
+exclusion_reasons <- all_surveys %>% 
+  mutate(reasons_for_exclusion = str_sub(reasons_for_exclusion, 1, -3)) %>% 
+  select(session, created_date, reasons_for_exclusion) %>% 
+  drop_na(session, created_date) %>% 
+  comma_separated_to_columns(reasons_for_exclusion) %>% 
+  select( -created_date)
+
+exclusion_reasons_table <- exclusion_reasons %>% 
+  select(-session) %>% 
+  summarise_all(sum) %>% 
+  sort() %>% 
+  gather(reason, n) %>% 
+  left_join(diary %>% mutate(reason = str_sub(reasons_for_exclusion, 1, -3)) %>% group_by(reason) %>% summarise(unique = n())) %>% 
+  mutate(unique = if_else(is.na(unique), 0L, unique)) %>% 
+  left_join(exclusion_reasons_diary %>% 
+  gather(reason, n, -session) %>% 
+  filter(n > 0) %>% 
+  distinct(session, reason, n) %>% 
+  group_by(reason) %>%
+  summarise(n_women = sum(n)))
+
+library(UpSetR)
+exclusion_reasons %>% 
+  filter(included == 0) %>% 
+  select(-included) %>% 
+  as.data.frame() %>% 
+  {
+  upset(., ncol(.), 20, show.numbers = TRUE, order.by = "freq",
+      main.bar.color = "#6E8691",
+      matrix.color = "#6E8691",
+      sets.bar.color = "#53AC9B")
+  }
+
+exclusion_reasons_table %>% 
+  knitr::kable(caption = "Reasons for exclusion. _n_ shows the number of affected women, _unique_ those who for whom this was the only reason to be excluded.")
+```
+
+
+### Diary
+```{r}
+exclusion_reasons_diary <- diary %>% 
+  mutate(reasons_for_exclusion = str_sub(reasons_for_exclusion, 1, -3)) %>% 
+  select(session, created_date, reasons_for_exclusion) %>% 
+  drop_na(session, created_date) %>% 
+  comma_separated_to_columns(reasons_for_exclusion) %>% 
+  select( -created_date)
+
+exclusion_reasons_diary_table <- exclusion_reasons_diary %>% 
+  select(-session) %>% 
+  summarise_all(sum) %>% 
+  sort() %>% 
+  gather(reason, n) %>% 
+  left_join(diary %>% mutate(reason = str_sub(reasons_for_exclusion, 1, -3)) %>% group_by(reason) %>% summarise(unique = n())) %>% 
+  mutate(unique = if_else(is.na(unique), 0L, unique)) %>% 
+  left_join(exclusion_reasons_diary %>% 
+  gather(reason, n, -session) %>% 
+  filter(n > 0) %>% 
+  distinct(session, reason, n) %>% 
+  group_by(reason) %>%
+  summarise(n_women = sum(n)))
+
+library(UpSetR)
+exclusion_reasons_diary %>% 
+  filter(included == 0) %>% 
+  select(-included) %>% 
+  as.data.frame() %>% 
+  {
+  upset(., ncol(.), 20, show.numbers = TRUE, order.by = "freq",
+      main.bar.color = "#6E8691",
+      matrix.color = "#6E8691",
+      sets.bar.color = "#53AC9B")
+  }
+
+exclusion_reasons_diary_table %>% 
+  knitr::kable(caption = "Reasons for exclusion. _n_ shows the number of affected women, _unique_ those who for whom this was the only reason to be excluded.")
+```
+
 
 ## Whole Sample
 
 
 ## Singles 
+
+```{r}
+diary <- readRDS("diary_persons.rds")
+diary <- diary %>% filter(reasons_for_exclusion == "")
+
+diary %>% select(person_is_related_man,
+                 person_is_related_woman, 
+                 person_is_unrelated_man,
+                 time_family) %>% cor(use='p') %>% round(2)
+
+diary %>% group_by(person) %>% filter(row_number() == 1) %>% 
+  summarise(mean(age, na.rm = T), sd(age))
+
+diary %>% group_by(person) %>% filter(row_number() == 1) %>%   
+  group_by(hormonal_contraception) %>% 
+  summarise(mean(age, na.rm = T), sd(age))
+
+diary %>% group_by(hormonal_contraception) %>%      
+  summarise(n(), n_distinct(person))
+
+```
+

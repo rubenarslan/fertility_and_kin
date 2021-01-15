@@ -11,8 +11,9 @@ smooths30 <- conditional_effects(model,
 library(tidyverse)
 
 smo_data <- attributes(smooths30$`RCD_fab:hormonal_contraception`)$spaghetti %>% 
-  mutate(nohc = if_else(hormonal_contraception == TRUE, "0", "1"))
-s
+  mutate(nohc = if_else(hormonal_contraception == TRUE, "0", "1")) %>% 
+  arrange(nohc)
+
 smo_diff <- full_join(
   smo_data %>% 
     filter(nohc == "1") %>%
@@ -28,21 +29,35 @@ smo_diff <- full_join(
 
 smo_data <- bind_rows(smo_data, smo_diff)
 
+if(model$family$family %in% c("gaussian", "bernoulli")) {
+  sd_fun <- sd
+} else if (model$family$family == "poisson") {
+  sd_fun = mean
+} 
 y_axes <- bind_rows(
   model$data %>% 
     mutate(nohc = if_else(hormonal_contraception == TRUE, "0", "1")) %>% 
     group_by(nohc) %>% 
     summarise(
-      outcomemeanplus1sd = mean(!!outcome_var, na.rm = T) + sd(!!outcome_var, na.rm = T),
-      outcomemeanminus1sd = mean(!!outcome_var, na.rm = T) - sd(!!outcome_var, na.rm = T)),
+      n_women = n_distinct(person),
+      outcomemeanplus1sd = min(mean(!!outcome_var, na.rm = T) + sd_fun(!!outcome_var, na.rm = T), max(!!outcome_var, na.rm = T)),
+      outcomemeanminus1sd = max(mean(!!outcome_var, na.rm = T) - sd_fun(!!outcome_var, na.rm = T), min(!!outcome_var, na.rm = T))),
   model$data %>% 
     summarise(
-      outcomemeanplus1sd = 0 + sd(!!outcome_var, na.rm = T),
-      outcomemeanminus1sd = 0 - sd(!!outcome_var, na.rm = T)) %>% 
+      outcomemeanplus1sd = 0 + sd_fun(!!outcome_var, na.rm = T),
+      outcomemeanminus1sd = 0 - sd_fun(!!outcome_var, na.rm = T)) %>% 
     mutate(nohc = "diff")
 )
 
-smo_data <- smo_data %>% left_join(y_axes)
+smo_data <- smo_data %>% 
+  left_join(y_axes)
+
+smo_data <- smo_data %>% 
+  mutate(nohc = fct_inorder(case_when(
+    nohc == "1" ~ paste0("Cycling (n=", n_women, ")"),
+    nohc == "0" ~ paste0("HC user (n=", n_women, ")"),
+    nohc == "diff" ~ "Difference"
+  )))
   
 alphas <- diary %>% 
   ungroup() %>% 
@@ -70,9 +85,7 @@ ggplot(smo_data, aes(RCD_fab)) +
   
   # color lines
   scale_color_manual("Contraception", 
-                     labels = c("0" = "HC user", "1" = "Cycling", "diff" = "Difference"), 
-                     values = c("0" = 'black', '1' = 'red', "diff" = "#4B7BB4"), 
-                     breaks = c("0", "1", "diff"), 
+                     values = c('black', 'red', "#4B7BB4"), 
                      guide = FALSE) +
   
   # make the alpha range fit the prc_stirn_b values
@@ -85,24 +98,23 @@ ggplot(smo_data, aes(RCD_fab)) +
   #                   breaks = c("0", "1", "diff"), guide = FALSE) +
   
   # facet the plot by contraception 
-  facet_wrap( ~ nohc, scales = "free_y", ncol = 3, 
-             labeller = labeller(nohc = c("0" = "HC user", "1" = "Cycling", "diff" = "Difference"))) +
+  facet_wrap( ~ nohc, scales = "free_y", ncol = 3) +
   
   # fancy labelling for X axis
-  scale_x_continuous("Days until next menstrual onset\n(squished to 29-day cycle)", 
+  scale_x_continuous("Days until next menstrual onset (standardized to 29-day cycle)", 
                      breaks = c(-29, -21, -14, -6,-5,-4,-3,-2, -1), 
                      labels = c("29", "22", "14\nest. ovulation", "6\n", "\n", "\n", "\n\npremens.", "\n", "1\n")) +
   
   # This variable comes from the function
   scale_y_continuous(outcome) +
   
-  cowplot::theme_cowplot(font_size = 14, 
+  cowplot::theme_cowplot(font_size = 10, 
                          font_family = "Helvetica Neue") +
   
   theme(strip.background = element_rect(fill = "#FFFFFF"),
         strip.text = element_text(size = 11))
 
-ggsave(paste0("figures/",outcome, "_curve.png"), width = 7, height = 4)
-ggsave(paste0("figures/",outcome, "_curve.pdf"), width = 7, height = 4)
+ggsave(paste0("figures/",outcome, "_curve.png"), width = 6, height = 3)
+ggsave(paste0("figures/",outcome, "_curve.pdf"), width = 6, height = 3)
 ```
 

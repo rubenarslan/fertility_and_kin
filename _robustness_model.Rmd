@@ -48,7 +48,7 @@ summary(with_outcome_var)
 
 ```{r}
 if(identical(model$family$family, "gaussian")) {
-  ordinal_model = update(model, recompile = TRUE, family = cumulative(), newdata = diary %>% mutate(time_family = as.integer(time_family)) %>% filter(reasons_for_exclusion == ""), file= paste0("brms_fits/", model_prefix, "rob_check_full_ordinal_model"))
+  ordinal_model = update(model, recompile = TRUE, family = cumulative(), newdata = diary %>% mutate(time_family = as.integer(1 + time_family)) %>% filter(reasons_for_exclusion == ""), file= paste0("brms_fits/", model_prefix, "rob_check_full_ordinal_model"))
   summary(ordinal_model)
 } 
 ```

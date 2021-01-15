@@ -416,3 +416,15 @@ custom_forest <- function(model, pars) {
 summary.brmsfit <- function(...) {
   brms:::summary.brmsfit(..., prob = 0.99)
 }
+comma_separated_to_columns <- function(df, col) {
+  colname <- deparse(substitute(col))
+  df$splitcol <- df %>% pull(!!colname)
+  separate_rows(df, splitcol, convert = TRUE, sep = ", ") %>% 
+    mutate(splitcol = if_else(is.na(splitcol), "no", 
+                              if_else(splitcol == "" | 
+                                        splitcol %in% c(), "included", as.character(splitcol)))) %>% 
+    mutate(#splitcol = stringr::str_c(colname, "_", splitcol), 
+      value = 1) %>% 
+    spread(splitcol, value, fill = 0) %>% 
+    select(-colname)
+}
