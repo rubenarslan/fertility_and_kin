@@ -25,21 +25,25 @@ library(ggplot2)
 library(tidyr) # daten von lang nach breit und zurueck
 library(dplyr) # daten zusammenfassen etc. immer als letztes laden
 diary <- readRDS("diary_persons.rds")
-diary <- diary %>% filter(reasons_for_exclusion == "")
 library(brms)
 ```
 
 ### contact with related men {.tabset}
 ```{r}
-model2_relatives <- brm(person_is_related_man ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/relatives_prob4")
+model2_relatives <- brm(person_is_related_man_seen ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary %>% filter(reasons_for_exclusion == ""), backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/relatives_prob4")
 hypothesis(model2_relatives, "fertile_fab < 0", alpha = 0.01)
 hypothesis(model2_relatives, "fertile_fab:hormonal_contraceptionTRUE > 0", alpha = 0.01)
 
-model2_relatives_curve <- brm(person_is_related_man ~ s(RCD_fab,  by = hormonal_contraception, bs = "cc") + (1 | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/relatives_prob_curve")
+model2_relatives_curve <- brm(person_is_related_man_seen ~ s(RCD_fab,  by = hormonal_contraception, bs = "cc") + (1 | person), data = diary %>% filter(reasons_for_exclusion == ""), backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/relatives_prob_curve")
 
-curve_plot(model2_relatives_curve, "No. of related men\nseen/thought about")
+curve_plot(model2_relatives_curve, "No. of related men seen more than 1h")
 
-sjPlot::tab_model(model2_relatives, transform = NULL, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
+
+model2_relatives_r_curve <- brm(person_is_related_man_seen ~ s(RCD_fab,  by = hormonal_contraception, bs = "cc") + (1 | person), data = diary %>% filter(reasons_for_exclusion == "") %>% group_by(session) %>% filter(sd(person_is_related_man_seen, na.rm = T) > 0), backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/model2_relatives_r_curve")
+
+curve_plot(model2_relatives_r_curve, "No. of related men seen more than 1h\nrequire outcome variance")
+
+sjPlot::tab_model(model2_relatives)
 summary(model2_relatives)
 
 table(model2_relatives$data$person_is_related_man)
@@ -68,16 +72,16 @@ ggsave("ms_fig_varying.png", width = 6, height = 7)
 ```{r}
 library(brms)
 library(bayesplot)
-model2_family <- brm(time_family ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, cores = 4, backend = "cmdstanr",file = "brms_fits/model2_family3")
+model2_family <- brm(time_family ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary %>% filter(reasons_for_exclusion == "" | reasons_for_exclusion == "not_single, "), cores = 4, backend = "cmdstanr",file = "brms_fits/model2_family3")
 hypothesis(model2_family, "fertile_fab < 0", alpha = 0.01)
 hypothesis(model2_family, "fertile_fab:hormonal_contraceptionTRUE > 0", alpha = 0.01)
 
 
-model2_family_curve <- brm(time_family ~ s(RCD_fab,  by = hormonal_contraception, bs = "cc") + (1 | person), data = diary, backend = "cmdstanr", cores = 4, file ="brms_fits/model2_family_curve")
+model2_family_curve <- brm(time_family ~ s(RCD_fab,  by = hormonal_contraception, bs = "cc") + (1 | person), data =  diary %>% filter(reasons_for_exclusion == "" | reasons_for_exclusion == "not_single, "), backend = "cmdstanr", cores = 4, file ="brms_fits/model3_family_curve")
 
 curve_plot(model2_family_curve, "Time spent with family")
 
-sjPlot::tab_model(model2_family, show.hdi50 = FALSE, bpe = "mean", prefix.labels	= "varname")
+sjPlot::tab_model(model2_family)
 summary(model2_family)
 marginal_effects(model2_family)
 
@@ -93,31 +97,9 @@ custom_forest(model2_family, pars = "fertile_fab") +
     scale_y_continuous("Est. fertile phase effect + 80% CI", breaks = -2:2)
 ```
 
-### relatives seen {.tabset}
-```{r}
-model2_relatives_seen <- brm(person_is_related_man_seen ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/relatives_seen")
-hypothesis(model2_relatives_seen, "fertile_fab < 0", alpha = 0.01)
-hypothesis(model2_relatives_seen, "fertile_fab:hormonal_contraceptionTRUE > 0", alpha = 0.01)
-
-sjPlot::tab_model(model2_relatives_seen)
-summary(model2_relatives_seen)
-marginal_effects(model2_relatives_seen)
-```
-
-### 2b relatives thought about {.tabset}
-```{r}
-model2_social_life_related_thought_about <- brm(person_is_related_man_thoughts ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/relatives_thoughts")
-hypothesis(model2_social_life_related_thought_about, "fertile_fab < 0", alpha = 0.01)
-hypothesis(model2_social_life_related_thought_about, "fertile_fab:hormonal_contraceptionTRUE > 0", alpha = 0.01)
-
-sjPlot::tab_model(model2_social_life_related_thought_about)
-summary(model2_social_life_related_thought_about)
-marginal_effects(model2_social_life_related_thought_about)
-```
-
 ### unrelated men {.tabset}
 ```{r}
-model2_unrelated_men <- brm(person_is_unrelated_man ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/unrelated_men")
+model2_unrelated_men <- brm(person_is_unrelated_man ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data =  diary %>% filter(reasons_for_exclusion == ""), backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/unrelated_men")
 
 sjPlot::tab_model(model2_unrelated_men)
 summary(model2_unrelated_men)
@@ -144,16 +126,4 @@ summary(model2_unrelated_women)
 marginal_effects(model2_unrelated_women)
 ```
 
-### time family curve (all) {.tabset}
-```{r}
-library(brms)
-library(bayesplot)
-diary <- readRDS("diary_persons.rds")
-diary <- diary %>% filter(reasons_for_exclusion == "" | reasons_for_exclusion == "not_single, ")
-
-model3_family_curve <- brm(time_family ~ s(RCD_fab,  by = hormonal_contraception, bs = "cc") + (1 | person), data = diary, file = "brms_fits/model3_family_curve")
-
-curve_plot(model3_family_curve, "Time spent with family (all)")
-
-```
 

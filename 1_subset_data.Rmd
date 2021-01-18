@@ -3,6 +3,18 @@
 library(tidyverse)
 library(tidylog)
 load("~/research/gocd2/data/cleaned_selected.rdata")
+# 
+# diary <- diary %>% 
+#   group_by(person, cycle_nr) %>% 
+#   mutate(menses_length = round(sum(menstruation, na.rm = T)),
+#     RCD_std = case_when(
+#     round(menstruation)==1 ~ ((RCD + 24 + menses_length)/menses_length * 5) - 24,
+#     RCD > -24 ~ RCD,
+#     TRUE ~ RCD/cycle_length*29
+#   )
+# )
+# diary %>% filter(RCD_std < -30) %>% select(RCD_std, RCD, cycle_length, menses_length, menstruation)
+# ggplot(diary, aes(RCD, RCD_std, color = cycle_length)) + geom_point(alpha = 0.1)
 
 # only singles
 diary <- diary %>% 
@@ -20,6 +32,7 @@ diary <- diary %>%
 diary_social <- diary_social %>% mutate(
   person_is_related_woman = if_else(person_relationship_to_anchor == "biological_relative" & person_sex == 1, 1, 0),  
   person_is_unrelated_woman = if_else(person_relationship_to_anchor != "biological_relative" & person_sex == 1, 1, 0),  
+  person_is_related_man_inferred_seen = if_else(person_is_related_man_inferred == 1 & person_seen == 1, 1, 0),
   person_is_related_man_seen = if_else(person_is_related_man == 1 & person_seen == 1, 1, 0),
   person_is_related_man_thoughts = if_else(person_is_related_man == 1 & person_thought_about == 1, 1, 0)
 )

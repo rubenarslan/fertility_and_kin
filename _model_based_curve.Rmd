@@ -5,7 +5,7 @@ outcome_var <- model$formula[[1]][[2]]
 smooths30 <- conditional_effects(model, 
       effects = "RCD_fab:hormonal_contraception",
       spaghetti = TRUE, resolution = 60, 
-      nsamples = 100, dpars = "mu", 
+      nsamples = 100, dpars = "mu",
       re_formula = NA)
 
 library(tidyverse)

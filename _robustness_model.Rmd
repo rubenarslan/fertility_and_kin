@@ -129,11 +129,11 @@ rob_check_parents = update(model, recompile = TRUE, cores = 4, newdata = diary %
 summary(rob_check_parents)
 ```
 
-#### Include non-singles
+#### Exclude singles
 
 ```{r}
-if(outcome != "person_is_related_man") {
-  rob_check_nonsingles = update(model, recompile = TRUE, cores = 4, newdata = diary %>% filter(reasons_for_exclusion == "" | reasons_for_exclusion == "not_single, "), file=paste0("brms_fits/", model_prefix, "rob_check_nonsingles"))
+if(outcome != "person_is_related_man_seen") {
+  rob_check_nonsingles = update(model, recompile = TRUE, cores = 4, newdata = diary %>% filter(reasons_for_exclusion == "", hetero_relationship == 0, relationship_status == 1), file=paste0("brms_fits/", model_prefix, "rob_check_singles"))
 
 summary(rob_check_nonsingles)
 }
@@ -178,8 +178,6 @@ summary(exclude_meds)
 hyp_guess = update(model, recompile = TRUE, cores = 4,newdata = diary %>% filter(reasons_for_exclusion == "") %>% filter(hypothesis_guess_topic == "no_guess"), file=paste0("brms_fits/", model_prefix, "_rob_check_hyp_guess"))
 
 summary(hyp_guess)
-# stanplot(hyp_guess)
-# marginal_effects(hyp_guess)
 ```
 
 #### Excluding women using awareness-based methods
@@ -273,9 +271,27 @@ summary(bc_inferred)
 
 #### Related men inferred
 ```{r mod_fam_inferred}
-related_men_inferred <- update(model, recompile = TRUE, formula = person_is_related_man_inferred ~ ., file = paste0("brms_fits/", model_prefix, "related_men_inferred"))
+if(outcome == "person_is_related_man_seen") {
+  related_men_inferred <- update(model, recompile = TRUE, formula = person_is_related_man_inferred_seen ~ ., newdata = diary %>% filter(reasons_for_exclusion == ""), file = paste0("brms_fits/", model_prefix, "related_men_inferred"))
+  summary(related_men_inferred)
+}
+```
 
-summary(related_men_inferred)
+
+#### Related men thought about
+```{r}
+if(outcome == "person_is_related_man_seen") {
+  related_men_thoughts <- update(model, recompile = TRUE, formula = person_is_related_man_thoughts ~ ., newdata = diary %>% filter(reasons_for_exclusion == ""),  file = paste0("brms_fits/", model_prefix, "related_men_thoughts"))
+  summary(related_men_thoughts)
+}
+```
+
+#### Related men seen/thought about
+```{r}
+if(outcome == "person_is_related_man_seen") {
+  related_men <- update(model, recompile = TRUE, formula = person_is_related_man ~ ., newdata = diary %>% filter(reasons_for_exclusion == ""),  file = paste0("brms_fits/", model_prefix, "related_men"))
+  summary(related_men)
+}
 ```
 
 
@@ -301,8 +317,8 @@ robchecks_e <- list(
   `E9b. Monday-Thursday only` = weekday,
   `E10. Include living with parents` = rob_check_parents
   )
-if(outcome != "person_is_related_man") {
-  robchecks_e[["E11. Include non-singles"]] = rob_check_nonsingles 
+if(outcome != "person_is_related_man_seen") {
+  robchecks_e[["E11. Include singles"]] = rob_check_nonsingles 
 }
 robchecks_e <- robchecks_e %>%
   map(function(x) {
@@ -347,6 +363,12 @@ if(model$family$family == "gaussian") {
   robchecks_p[["M5. Ordinal regression"]] = ordinal_model 
 } else {
   robchecks_p[["M4. Gaussian regression"]] = gaussian_model 
+}
+
+if(outcome == "person_is_related_man_seen") {
+  robchecks_p[["O1. Inferred male relatives"]] = related_men_inferred
+  robchecks_p[["O2. Related men thought about"]] = related_men_thoughts
+  robchecks_p[["O3. Related men seen/thought about"]] = related_men
 }
 
 robchecks_p <- robchecks_p %>%
