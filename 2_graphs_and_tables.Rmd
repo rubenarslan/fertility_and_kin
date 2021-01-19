@@ -1,0 +1,47 @@
+---
+title: "Graphs and tables"
+author: "Ruben Arslan"
+date: "1/18/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## load packages {.tabset}
+```{r echo=F, results='hide',message=F,warning=F}
+source("0_helpers.R")
+library(knitr) # um diese dokumente zu generieren
+library(formr) # formr paket, kann daten laden
+opts_chunk$set(warning = F, message = F, error = T, fig.width = 7, fig.height = 6)
+library(lubridate) # mit datum-uhrzeit rechnen
+library(pander) # schoen formatierte tabellen
+library(ggplot2)
+library(tidyr) # daten von lang nach breit und zurueck
+library(dplyr) # daten zusammenfassen etc. immer als letztes laden
+diary <- readRDS("diary_persons.rds")
+library(brms)
+```
+
+## Main Results Table
+```{r}
+model2_relatives <- brm(person_is_related_man_seen ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary %>% filter(reasons_for_exclusion == ""), backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/relatives_prob4")
+model2_family <- brm(time_family ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary %>% filter(reasons_for_exclusion == "" | reasons_for_exclusion == "not_single, "), cores = 4, backend = "cmdstanr",file = "brms_fits/model2_family3")
+
+sjPlot::tab_model(model2_family, model2_relatives, ci.hyphen = ";", show.ci = 0.99, show.icc = FALSE, bpe = "mean")
+```
+
+
+## Supplement
+```{r}
+model2_unrelated_men <- brm(person_is_unrelated_man ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data =  diary %>% filter(reasons_for_exclusion == ""), backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/unrelated_men")
+
+model2_related_women <- brm(person_is_related_woman ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/related_woman")
+
+model2_unrelated_women <- brm(person_is_unrelated_woman ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/unrelated_woman")
+
+sjPlot::tab_model(model2_unrelated_men, model2_related_women, model2_unrelated_women, ci.hyphen = ";", show.ci = 0.99, show.icc = FALSE, bpe = "mean")
+```
+
