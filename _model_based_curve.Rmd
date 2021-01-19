@@ -109,7 +109,7 @@ ggplot(smo_data, aes(RCD_fab)) +
   scale_y_continuous(outcome) +
   
   cowplot::theme_cowplot(font_size = 10, 
-                         font_family = "Helvetica Neue") +
+                         font_family = "Helvetica") +
   
   theme(strip.background = element_rect(fill = "#FFFFFF"),
         strip.text = element_text(size = 11))

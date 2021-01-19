@@ -114,7 +114,8 @@ plot_curve = function(obj, diary, caption_x = "Days until next menstruation") {
 
 
 do_model = function(model, diary, model_prefix) {
-  rmdpartials::partial("_robustness_model.Rmd", model = model, diary = diary, 
+  rmdpartials::partial("_robustness_model.Rmd", show_code = TRUE,
+                       model = model, diary = diary, 
                        model_prefix = model_prefix)
 }
 
@@ -136,8 +137,10 @@ bar_count = function(data, variable, na.rm = FALSE) {
     xlab(varname) +
     coord_flip()
 }
-
-theme_set(theme_tufte(base_size = 15, base_family='Helvetica Neue'))
+library(extrafont)
+# extrafont::font_import()
+extrafont::loadfonts()
+theme_set(theme_tufte(base_size = 15, base_family='Helvetica'))
 
 plot_interaction = function(model, nr = 3) {
   ef = allEffects(model, xlevels = 2)
@@ -285,7 +288,8 @@ model_time <- function(model) {
 
 
 curve_plot <- function(model, outcome) {
-  rmdpartials::partial("_model_based_curve.Rmd", model = model, outcome = outcome)
+  rmdpartials::partial("_model_based_curve.Rmd", show_code = TRUE,
+                       model = model, outcome = outcome)
 }
 
 custom_forest <- function(model, pars) {

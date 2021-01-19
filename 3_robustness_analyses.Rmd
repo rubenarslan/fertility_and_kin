@@ -10,7 +10,7 @@ output: html_document
 knitr::opts_chunk$set(error = TRUE)
 ```
 
-```{r echo=F, results='hide',message=F,warning=F}
+```{r message=F,warning=F}
 source("0_helpers.R")
 library(knitr) # um diese dokumente zu generieren
 library(formr) # formr paket, kann daten laden

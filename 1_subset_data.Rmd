@@ -29,6 +29,12 @@ diary <- diary %>%
                                        )
   )
 
+all_surveys <- all_surveys %>% 
+  mutate(reasons_for_exclusion = str_c(reasons_for_exclusion,
+                                            if_else(abode_flat_share == 2, "living_with_parents, ", "", "")
+                                       )
+  )
+
 diary_social <- diary_social %>% mutate(
   person_is_related_woman = if_else(person_relationship_to_anchor == "biological_relative" & person_sex == 1, 1, 0),  
   person_is_unrelated_woman = if_else(person_relationship_to_anchor != "biological_relative" & person_sex == 1, 1, 0),  
@@ -52,5 +58,6 @@ diary_persons$premenstrual_phase_fab = factor(diary_persons$premenstrual_phase_f
 diary_persons$hormonal_contraception = factor(diary_persons$hormonal_contraception)
 
 saveRDS(diary_persons, "diary_persons.rds")
+saveRDS(all_surveys, "persons.rds")
 ```
 
