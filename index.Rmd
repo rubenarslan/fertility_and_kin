@@ -1,0 +1,41 @@
+---
+title: "Fertility and Kin"
+output: html_document
+---
+
+
+# No evidence that inbreeding avoidance is up-regulated during the ovulatory phase of the menstrual cycle
+
+This website documents analyses and results for Study 2 (Goettingen Ovulatory Cycle Diaries 2). It accompanies the supplement on [OSF](https://osf.io/f2hct/).
+
+- [Helper functions](0_helpers.R)
+- [Data subsetting and pre-processing](1_subset_data.html). More pre-processing is documented [here](https://rubenarslan.github.io/gocd2/).
+- [Descriptive statistics](1_descriptives.html). More descriptive statistics and codebook [here](https://rubenarslan.github.io/gocd2/).
+- [Main analyses](2_analyses_relatedness.html)
+- [Robustness analyses](3_robustness_analyses.html)
+
+
+### Reproducibility
+This repository uses the [renv](https://rstudio.github.io/renv/) package to make
+it easier to rerun analyses using the same setup and package versions that were
+used to create them.
+
+<details><summary>Here's a classical session info.</summary>
+
+```{r}
+library(codebook)
+library(tidylog)
+library(effsize)
+library(effects); library(lme4); library(lmerTest); library(knitr); library(brms)
+library(sjPlot)
+sessionInfo()
+```
+
+</details>
+
+<details><summary>Here's our renv lockfile.</summary>
+
+```{r}
+cat(readLines("renv.lock"), sep = "\n")
+```
+</details>
