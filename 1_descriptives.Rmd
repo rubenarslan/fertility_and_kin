@@ -1,20 +1,168 @@
 ---
-title: "1_descriptives"
-author: "Julie"
-date: "14 November 2018"
+title: "Descriptives"
+author: "Julie Driebe & Ruben Arslan"
+date: "20 12 2020"
 output: html_document
 ---
 
-# Alttag und Sex - Descriptives {.tabset}
+# Fertility and Kin - Descriptives {.tabset}
+```{r}
+knitr::opts_chunk$set(warning =  F, message = F)
+```
 
+## load and prepare data {.tabset}
 ```{r}
 source("0_helpers.R")
-diary <- readRDS("diary_persons.rds")
-opts_chunk$set(warning = F, message = F)
+library(effsize)
+library(tidyverse)
 
-library(knitr)
-opts_chunk$set(fig.width = 9, fig.height = 7, cache = T, warning = F, message = F, cache = F)
+all_surveys <- readRDS("persons.rds")
+diary <- readRDS("diary_persons.rds")
+
+## only participants fullfilling inclusion criteria and not living with parents 
+all_surveys_included = all_surveys %>% filter(reasons_for_exclusion == "" & abode_flat_share  != 2)
+hc = all_surveys_included %>% filter(hormonal_contraception == T)
+nc = all_surveys_included %>% filter(hormonal_contraception == F)
 ```
+
+## descriptives {.tabset}
+
+### distribution {.tabset}
+```{r}
+## nc vs hc
+xtabs(~ hormonal_contraception, all_surveys_included)
+
+## single vs relationship
+xtabs(~ relationship_status == 1, all_surveys_included)
+
+## relationship status + contraception
+xtabs(~ (relationship_status == 1) + hormonal_contraception, all_surveys_included)
+
+## percentage hc vs nc
+round(prop.table(xtabs(~ hormonal_contraception, all_surveys_included))*100 ,2)
+```
+
+### NC {.tabset}
+```{r}
+all_surveys_included %>% filter(hormonal_contraception == F) %>% select(age, religiosity, first_time, menstruation_length, number_sexual_partner, menarche, bfi_agree, bfi_open, bfi_neuro, bfi_extra, bfi_consc) %>%
+  gather(variable, value) %>%
+  group_by(variable) %>%
+  filter(!is.na(value)) %>%
+  summarise(mean = mean(value), sd = sd(value), 
+            median = median(value),
+            min = min(value), max  = max(value)) %>%
+  data.frame()
+
+```
+
+
+### HC {.tabset}
+```{r}
+all_surveys_included %>% filter(hormonal_contraception == T) %>% select(age, religiosity, first_time, menstruation_length, number_sexual_partner, menarche, bfi_agree, bfi_open, bfi_neuro, bfi_extra, bfi_consc) %>%
+  gather(variable, value) %>%
+  group_by(variable) %>%
+  filter(!is.na(value)) %>%
+  dplyr::summarise(mean = mean(value), sd = sd(value), 
+            median = median(value),
+            min = min(value), max  = max(value)) %>%
+  data.frame()
+```
+### single women {.tabset}
+
+#### NC {.tabset}
+```{r}
+all_surveys_included %>% filter(hormonal_contraception == F & relationship_status == 1) %>% select(age, religiosity, first_time, menstruation_length, number_sexual_partner, menarche, bfi_agree, bfi_open, bfi_neuro, bfi_extra, bfi_consc) %>%
+  gather(variable, value) %>%
+  group_by(variable) %>%
+  filter(!is.na(value)) %>%
+  dplyr::summarise(mean = mean(value), sd = sd(value), 
+            median = median(value),
+            min = min(value), max  = max(value)) %>%
+  data.frame()
+
+```
+
+#### HC {.tabset}
+```{r}
+all_surveys_included %>% filter(hormonal_contraception == T & relationship_status == 1) %>% select(age, religiosity, first_time, menstruation_length, number_sexual_partner, menarche, bfi_agree, bfi_open, bfi_neuro, bfi_extra, bfi_consc) %>%
+  gather(variable, value) %>%
+  group_by(variable) %>%
+  filter(!is.na(value)) %>%
+  dplyr::summarise(mean = mean(value), sd = sd(value), 
+            median = median(value),
+            min = min(value), max  = max(value)) %>%
+  data.frame()
+
+```
+
+## compare groups {.tabset}
+
+### age {.tabset}
+```{r}
+t.test(hc$age, nc$age)
+cohen.d(hc$age, nc$age, hedges.correction = T, pooled = F)
+```
+
+### religiosity {.tabset}
+```{r}
+t.test(hc$religiosity, nc$religiosity)
+cohen.d(hc$religiosity, nc$religiosity, hedges.correction = T, pooled = F)
+```
+
+### first time {.tabset}
+```{r}
+t.test(hc$first_time, nc$first_time)
+cohen.d(hc$first_time, nc$first_time, hedges.correction = T, pooled = F, na.rm =T)
+```
+
+### menarche {.tabset}
+```{r}
+t.test(hc$menarche, nc$menarche)
+cohen.d(hc$menarche, nc$menarche, hedges.correction = T, pooled = F)
+```
+
+### cycle length {.tabset}
+```{r}
+t.test(hc$menstruation_length, nc$menstruation_length)
+cohen.d(hc$menstruation_length, nc$menstruation_length, hedges.correction = T, pooled = F)
+```
+
+### nr sex partner {.tabset}
+```{r}
+t.test(hc$number_sexual_partner, nc$number_sexual_partner)
+cohen.d(hc$number_sexual_partner, nc$number_sexual_partner, hedges.correction = T, pooled = F)
+```
+
+### extraversion {.tabset}
+```{r}
+t.test(hc$bfi_extra, nc$bfi_extra)
+cohen.d(hc$bfi_extra, nc$bfi_extra, hedges.correction = T, pooled = F)
+```
+
+### agreeableness {.tabset}
+```{r}
+t.test(hc$bfi_agree, nc$bfi_agree)
+cohen.d(hc$bfi_agree, nc$bfi_agree, hedges.correction = T, pooled = F)
+```
+
+### neuroticism {.tabset}
+```{r}
+t.test(hc$bfi_neuro, nc$bfi_neuro)
+cohen.d(hc$bfi_neuro, nc$bfi_neuro, hedges.correction = T, pooled = F)
+```
+
+### conscientiousness {.tabset}
+```{r}
+t.test(hc$bfi_consc, nc$bfi_consc)
+cohen.d(hc$bfi_consc, nc$bfi_consc, hedges.correction = T, pooled = F)
+```
+
+### openness {.tabset}
+```{r}
+t.test(hc$bfi_open, nc$bfi_open)
+cohen.d(hc$bfi_open, nc$bfi_open, hedges.correction = T, pooled = F)
+```
+
 
 ## Time spent with whom
 ```{r}
@@ -25,18 +173,15 @@ diary %>% filter(reasons_for_exclusion == "") %>%
   xtabs(~ time_family + I(person_is_related_man>0) + I(person_is_related_woman>0), .)
 ```
 
-
 ## Exclusion reasons
 
 ### Between subjects
 ```{r}
-all_surveys <- diary %>% group_by(person) %>% filter(row_number()==1) %>% ungroup()
 exclusion_reasons <- all_surveys %>% 
   mutate(reasons_for_exclusion = str_sub(reasons_for_exclusion, 1, -3)) %>% 
-  select(session, created_date, reasons_for_exclusion) %>% 
-  drop_na(session, created_date) %>% 
-  comma_separated_to_columns(reasons_for_exclusion) %>% 
-  select( -created_date)
+  select(session, reasons_for_exclusion) %>% 
+  drop_na(session) %>% 
+  comma_separated_to_columns(reasons_for_exclusion)
 
 exclusion_reasons_table <- exclusion_reasons %>% 
   select(-session) %>% 
@@ -45,7 +190,7 @@ exclusion_reasons_table <- exclusion_reasons %>%
   gather(reason, n) %>% 
   left_join(diary %>% mutate(reason = str_sub(reasons_for_exclusion, 1, -3)) %>% group_by(reason) %>% summarise(unique = n())) %>% 
   mutate(unique = if_else(is.na(unique), 0L, unique)) %>% 
-  left_join(exclusion_reasons_diary %>% 
+  left_join(exclusion_reasons %>% 
   gather(reason, n, -session) %>% 
   filter(n > 0) %>% 
   distinct(session, reason, n) %>% 
@@ -107,31 +252,3 @@ exclusion_reasons_diary %>%
 exclusion_reasons_diary_table %>% 
   knitr::kable(caption = "Reasons for exclusion. _n_ shows the number of affected women, _unique_ those who for whom this was the only reason to be excluded.")
 ```
-
-
-## Whole Sample
-
-
-## Singles 
-
-```{r}
-diary <- readRDS("diary_persons.rds")
-diary <- diary %>% filter(reasons_for_exclusion == "")
-
-diary %>% select(person_is_related_man,
-                 person_is_related_woman, 
-                 person_is_unrelated_man,
-                 time_family) %>% cor(use='p') %>% round(2)
-
-diary %>% group_by(person) %>% filter(row_number() == 1) %>% 
-  summarise(mean(age, na.rm = T), sd(age))
-
-diary %>% group_by(person) %>% filter(row_number() == 1) %>%   
-  group_by(hormonal_contraception) %>% 
-  summarise(mean(age, na.rm = T), sd(age))
-
-diary %>% group_by(hormonal_contraception) %>%      
-  summarise(n(), n_distinct(person))
-
-```
-
