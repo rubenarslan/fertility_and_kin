@@ -38,6 +38,6 @@ do_model(model2_family, diary %>% mutate(reasons_for_exclusion = str_replace_all
 ```{r mod_fam}
 model2_relatives <- brm(person_is_related_man_seen ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary %>% filter(reasons_for_exclusion == ""), family = poisson(), cores = 4, file ="brms_fits/relatives_prob4")
 
-do_model(model2_relatives, diary, model_prefix = "relatedmen_")
+do_model(model2_relatives, diary %>% filter(!str_detect(reasons_for_exclusion, "not_single, ")), model_prefix = "relatedmen_")
 ```
 

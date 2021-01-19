@@ -16,6 +16,16 @@ library(knitr)
 opts_chunk$set(fig.width = 9, fig.height = 7, cache = T, warning = F, message = F, cache = F)
 ```
 
+## Time spent with whom
+```{r}
+diary %>% filter(reasons_for_exclusion == "") %>% 
+  select(time_family, person_is_related_man, person_is_related_woman) %>% cor(use = 'p') %>% round(2)
+
+diary %>% filter(reasons_for_exclusion == "") %>% 
+  xtabs(~ time_family + I(person_is_related_man>0) + I(person_is_related_woman>0), .)
+```
+
+
 ## Exclusion reasons
 
 ### Between subjects

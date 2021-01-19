@@ -1,6 +1,5 @@
 ---
 title: "_robustness_model"
-author: "Julie"
 date: "21 November 2018"
 output: html_document
 ---
@@ -9,7 +8,7 @@ output: html_document
 
 #### Basic model
 
-```{r echo=F, results='hide',message=F,warning=F, error=F}
+```{r}
 library(effects); library(lme4); library(lmerTest); library(knitr); library(brms)
 
 summary(model)

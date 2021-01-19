@@ -99,25 +99,6 @@ opts_chunk$set(
 panderOptions("table.split.table", Inf)
 
 
-#' ##### we use this function to automatically get nice tables
-pander_handler = function(x, ...) {
-  anyS3method = function(x) {
-    classes = class(x)
-    any(sapply(classes, FUN = function(classes) { !is.null(getS3method('pander',classes,TRUE)) } ))
-  }
-  if ("knit_asis" %in% class(x)) {
-    x # obj is knit_asis already, don't touch it 
-    # (useful if e.g. pander is called with options in the doc)
-  } else if (anyS3method(x)) {
-    pander(x, row.names = F, ...) # if method available, pander
-  } else if (isS4(x)) {
-    show(x)
-  } else {
-    print(x)
-  }
-}
-
-
 
 
 #' ## curve plot
@@ -132,104 +113,9 @@ plot_curve = function(obj, diary, caption_x = "Days until next menstruation") {
 }
 
 
-##### robustness analyses
-
-plot_triptych = function(obj, x.var = 'fertile_fab', multiline=F, partial.residuals = F, xlevels = 3, term = NULL, panel_rows = 2) {
-  library(effects)
-  if(length(attributes(obj)$effects) == 0) {
-    attributes(obj)$effects = allEffects(obj, xlevels = xlevels, partial.residuals = partial.residuals)
-  }
-  if(is.null(term)) {
-    interaction = attributes(obj)$effects[
-      which.max(stringr::str_length(names(attributes(obj)$effects)))
-      ]
-  } else {
-    interaction = attributes(obj)$effects[ names(attributes(obj)$effects) == term ]
-  }
-  if (multiline) {
-    panel_rows = 1
-    colors = c("red","black")
-  } else {
-    colors = "black"
-  }
-  layout = c(xlevels,panel_rows,1)
-  plot(interaction,x.var = x.var, multiline = multiline, layout = layout, colors = colors, rug = F)
-  invisible(obj)
-}
-
-
 do_model = function(model, diary, model_prefix) {
   rmdpartials::partial("_robustness_model.Rmd", model = model, diary = diary, 
                        model_prefix = model_prefix)
-}
-
-##### counting excluded participants
-
-n_excluded = function(x) {
-  excluded_new = sum(is.na(x) | x == FALSE,na.rm = T)
-  if (is.null(excluded_old)) {
-    excluded = excluded_new
-  } else {
-    excluded = excluded_new - excluded_old
-  }
-  cat(excluded, "excluded\n")
-  excluded_old <<- excluded_new
-  excluded
-}
-
-### counting excluded days 
-
-n_excluded_days = function(x) {
-  excluded_new_days = sum(is.na(x) | x == FALSE,na.rm = T)
-  if (is.null(excluded_old_days)) {
-    excluded = excluded_new_days
-  } else {
-    excluded = excluded_new_days - excluded_old_days
-  }
-  cat(excluded, "excluded\n")
-  excluded_old_days <<- excluded_new_days
-  excluded
-}
-
-### counting excluded days in social diary
-
-n_excluded_social = function(x) {
-  excluded_new_social = sum(is.na(x) | x == FALSE,na.rm = T)
-  if (is.null(excluded_old_social)) {
-    excluded = excluded_new_social
-  } else {
-    excluded = excluded_new_social - excluded_old_social
-  }
-  cat(excluded, "excluded\n")
-  excluded_old_social <<- excluded_new_social
-  excluded
-}
-
-### counting excluded participants in social network
-
-n_excluded_network = function(x) {
-  excluded_new_network = sum(is.na(x) | x == FALSE,na.rm = T)
-  if (is.null(excluded_old_network)) {
-    excluded = excluded_new_network
-  } else {
-    excluded = excluded_new_network - excluded_old_network
-  }
-  cat(excluded, "excluded\n")
-  excluded_old_network <<- excluded_new_network
-  excluded
-}
-
-###### strict exclusion
-n_excluded_network_strict = function(x) {
-  excluded_new_network_strict = sum(is.na(x) | x == FALSE,na.rm = T)
-  if (is.null(excluded_old_network_strict)) {
-    excluded = excluded_new_network_strict
-  } else {
-    excluded = excluded_new_network_strict - excluded_old_network_strict
-  }
-  cat(excluded, "excluded\n")
-  excluded_old_network_strict <<- excluded_new_network_strict
-  excluded
 }
 
 ###### bar plot 
@@ -251,7 +137,7 @@ bar_count = function(data, variable, na.rm = FALSE) {
     coord_flip()
 }
 
-theme_set(theme_tufte(base_size = 20, base_family='Helvetica Neue'))
+theme_set(theme_tufte(base_size = 15, base_family='Helvetica Neue'))
 
 plot_interaction = function(model, nr = 3) {
   ef = allEffects(model, xlevels = 2)

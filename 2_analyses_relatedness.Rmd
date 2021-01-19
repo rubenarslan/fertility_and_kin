@@ -44,7 +44,8 @@ model2_relatives_r_curve <- brm(person_is_related_man_seen ~ s(RCD_fab,  by = ho
 curve_plot(model2_relatives_r_curve, "No. of related men seen more than 1h\nrequire outcome variance")
 
 sjPlot::tab_model(model2_relatives)
-summary(model2_relatives)
+(summary_relatives <- summary(model2_relatives))
+summary_relatives$random$person %>% exp()
 
 table(model2_relatives$data$person_is_related_man)
 
@@ -81,7 +82,7 @@ model2_family_curve <- brm(time_family ~ s(RCD_fab,  by = hormonal_contraception
 
 curve_plot(model2_family_curve, "Time spent with family")
 
-sjPlot::tab_model(model2_family)
+sjPlot::tab_model(model2_family, ci.hyphen = ";", show.ci = 0.99, show.icc = FALSE, bpe = "mean")
 summary(model2_family)
 marginal_effects(model2_family)
 
@@ -101,7 +102,7 @@ custom_forest(model2_family, pars = "fertile_fab") +
 ```{r}
 model2_unrelated_men <- brm(person_is_unrelated_man ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data =  diary %>% filter(reasons_for_exclusion == ""), backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/unrelated_men")
 
-sjPlot::tab_model(model2_unrelated_men)
+sjPlot::tab_model(model2_unrelated_men, ci.hyphen = ";", show.ci = 0.99, show.icc = FALSE, bpe = "mean")
 summary(model2_unrelated_men)
 marginal_effects(model2_unrelated_men)
 ```
@@ -110,18 +111,17 @@ marginal_effects(model2_unrelated_men)
 ```{r}
 model2_related_women <- brm(person_is_related_woman ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/related_woman")
 
-sjPlot::tab_model(model2_related_women)
+sjPlot::tab_model(model2_related_women, ci.hyphen = ";", show.ci = 0.99, show.icc = FALSE, bpe = "mean")
 summary(model2_related_women)
 marginal_effects(model2_related_women)
 ```
-
 
 
 ### unrelated women {.tabset}
 ```{r}
 model2_unrelated_women <- brm(person_is_unrelated_woman ~ (premenstrual_phase_fab + menstruation + fertile_fab) * hormonal_contraception + (1 + fertile_fab | person), data = diary, backend = "cmdstanr", family = poisson(), cores = 4, file ="brms_fits/unrelated_woman")
 
-sjPlot::tab_model(model2_unrelated_women)
+sjPlot::tab_model(model2_unrelated_women, ci.hyphen = ";", show.ci = 0.99, show.icc = FALSE, bpe = "mean")
 summary(model2_unrelated_women)
 marginal_effects(model2_unrelated_women)
 ```
