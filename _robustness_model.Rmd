@@ -27,6 +27,19 @@ add_mod_formula = update.formula(
 summary(full_random_slopes)
 ```
 
+
+#### Full random slopes, no correlations
+
+```{r}
+add_mod_formula = update.formula(
+    formula(model),
+    new = as.formula(. ~ . - (1 + fertile_fab | person) + (1 + premenstrual_phase_fab + menstruation + fertile_fab || person ))) # reorder so that the triptych looks nice
+
+ full_random_slopes_no_cor = update(model, recompile = TRUE, iter = 6000, warmup = 4000, cores = 4, formula = add_mod_formula, newdata = diary %>% filter(reasons_for_exclusion == ""), file= paste0("brms_fits/", model_prefix, "rob_check_full_random_slopes_no_cor"))
+
+summary(full_random_slopes_no_cor)
+```
+
 #### Without random slopes
 
 ```{r}
@@ -128,13 +141,13 @@ rob_check_parents = update(model, recompile = TRUE, cores = 4, newdata = diary %
 summary(rob_check_parents)
 ```
 
-#### Exclude singles
+#### Exclude non-singles
 
 ```{r}
 if(outcome != "person_is_related_man_seen") {
-  rob_check_nonsingles = update(model, recompile = TRUE, cores = 4, newdata = diary %>% filter(reasons_for_exclusion == "", hetero_relationship == 0, relationship_status == 1), file=paste0("brms_fits/", model_prefix, "rob_check_singles"))
+  rob_check_singles = update(model, recompile = TRUE, cores = 4, newdata = diary %>% filter(reasons_for_exclusion == "", hetero_relationship == 0, relationship_status == 1), file=paste0("brms_fits/", model_prefix, "rob_check_singles"))
 
-summary(rob_check_nonsingles)
+summary(rob_check_singles)
 }
 ```
 
@@ -190,8 +203,8 @@ summary(unaware)
 #### Don't adjust for menstruation
 
 ```{r}
-dont_adjust = update.formula(formula(model), new = . ~ . - menstruation*hormonal_contraception - premenstrual_phase_fab*hormonal_contraception)
-no_mens = update(model, recompile = TRUE, cores = 4, formula = dont_adjust, file=paste0("brms_fits/", model_prefix, "rob_check_no_mens"))
+dont_adjust = update.formula(formula(model), new = . ~ . - menstruation*hormonal_contraception - premenstrual_phase_fab*hormonal_contraception + hormonal_contraception)
+no_mens = update(model, recompile = TRUE, cores = 4, formula = dont_adjust, file=paste0("brms_fits/", model_prefix, "rob_check_no_mens2"))
 
 
 summary(no_mens)
@@ -296,7 +309,7 @@ if(outcome == "person_is_related_man_seen") {
 
 #### Summary plot {.active}
 
-```{r}
+```{r fig.width=7,fig.height=7}
 library(broom.mixed)
 robchecks_e <- list(
   `A1. Original model` = model,
@@ -317,7 +330,7 @@ robchecks_e <- list(
   `E10. Include living with parents` = rob_check_parents
   )
 if(outcome != "person_is_related_man_seen") {
-  robchecks_e[["E11. Include singles"]] = rob_check_nonsingles 
+  robchecks_e[["E11. Singles only"]] = rob_check_singles 
 }
 robchecks_e <- robchecks_e %>%
   map(function(x) {
@@ -341,8 +354,8 @@ robchecks_e %>%
   geom_pointrange() + 
   coord_flip() +
   theme(axis.text.y = element_text(size = 11))
-ggsave(paste0("figures/", model_prefix,"_robustness_checks_exclusions.png"), width =10, height = 14)
-ggsave(paste0("figures/", model_prefix,"_robustness_checks_exclusions.pdf"), width =10, height = 14)
+ggsave(paste0("figures/", model_prefix,"_robustness_checks_exclusions.png"), width =5, height = 7)
+ggsave(paste0("figures/", model_prefix,"_robustness_checks_exclusions.pdf"), width =5, height = 7)
 
 robchecks_p <- list(
   `A1. Original model` = model,
@@ -354,14 +367,15 @@ robchecks_p <- list(
   `P6. Forward counted window` = forward_counted_window,
   `P7. Backward counted window` = backward_counted_window,
   `M1. Full random slopes` = full_random_slopes,
-  `M2. No random slopes` = no_varying_slope,
-  `M3. Require outcome variance` = with_outcome_var
+  `M2. Uncorrelated random slopes` = full_random_slopes_no_cor,
+  `M3. No random slopes` = no_varying_slope,
+  `M4. Require outcome variance` = with_outcome_var
   )
 
 if(model$family$family == "gaussian") {
-  robchecks_p[["M5. Ordinal regression"]] = ordinal_model 
+  robchecks_p[["M6. Ordinal regression"]] = ordinal_model 
 } else {
-  robchecks_p[["M4. Gaussian regression"]] = gaussian_model 
+  robchecks_p[["M5. Gaussian regression"]] = gaussian_model 
 }
 
 if(outcome == "person_is_related_man_seen") {
@@ -392,8 +406,8 @@ robchecks_p %>%
   geom_pointrange() + 
   coord_flip() +
   theme(axis.text.y = element_text(size = 11))
-ggsave(paste0("figures/", model_prefix,"_robustness_checks_model.png"), width =10, height = 14)
-ggsave(paste0("figures/", model_prefix,"_robustness_checks_model.pdf"), width =10, height = 14)
+ggsave(paste0("figures/", model_prefix,"_robustness_checks_model.png"), width =5, height = 7)
+ggsave(paste0("figures/", model_prefix,"_robustness_checks_model.pdf"), width =5, height = 7)
 
 
 
@@ -410,6 +424,6 @@ bind_rows(robchecks_e, robchecks_p) %>%
   facet_wrap(~ category, scales = "free_y") + 
   theme(axis.text.y = element_text(size = 11),
         strip.text = element_blank())
-ggsave(paste0("figures/", model_prefix,"_robustness_checks.png"), width =14, height = 14)
-ggsave(paste0("figures/", model_prefix,"_robustness_checks.pdf"), width =14, height = 14)
+ggsave(paste0("figures/", model_prefix,"_robustness_checks.png"), width = 7, height = 7)
+ggsave(paste0("figures/", model_prefix,"_robustness_checks.pdf"), width = 7, height = 7)
 ```
